@@ -1,5 +1,36 @@
-#Compiled Sources#
+dev_kernel_grub.img
+kernel.bin
+bochsout.txt
+
+# Mac
+.DS_Store
+__MACOSX
+
+# Compiled Object files
+*.slo
+*.lo
 *.o
-*.bin
-#Linux Image#
-*.img
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
