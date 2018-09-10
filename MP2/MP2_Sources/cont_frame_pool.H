@@ -1,16 +1,16 @@
 /*
  File: cont_frame_pool.H
- 
+
  Author: R. Bettati
  Department of Computer Science
  Texas A&M University
- Date  : 17/02/04 
- 
+ Date  : 17/02/04
+
  Description: Management of the CONTIGUOUS Free-Frame Pool.
- 
+
  As opposed to a non-contiguous free-frame pool, here we can allocate
  a sequence of CONTIGUOUS frames.
- 
+
  */
 
 #ifndef _CONT_FRAME_POOL_H_                   // include file only once
@@ -20,7 +20,11 @@
 /* DEFINES */
 /*--------------------------------------------------------------------------*/
 
-/* -- (none) -- */
+// defines for frame status using one char per frame
+#define INFO_BITS_PER_FRAME 8
+#define INFO_FREE_FRAME 0x00
+#define INFO_HEAD_FRAME 0x0F
+#define INFO_ALLOCATED_FRAME 0xFF
 
 /*--------------------------------------------------------------------------*/
 /* INCLUDES */
@@ -39,14 +43,20 @@
 /*--------------------------------------------------------------------------*/
 
 class ContFramePool {
-    
+
 private:
     /* -- DEFINE YOUR CONT FRAME POOL DATA STRUCTURE(s) HERE. */
-    
+    unsigned int base_frame_no;
+    unsigned long n_frames;
+    unsigned long info_frame_no;
+    unsigned long n_info_frames;
+    unsigned int n_free_frames;
+    unsigned char* ext_bitmap;
+
 public:
 
-    // The frame size is the same as the page size, duh...    
-    static const unsigned int FRAME_SIZE = Machine::PAGE_SIZE; 
+    // The frame size is the same as the page size, duh...
+    static const unsigned int FRAME_SIZE = Machine::PAGE_SIZE;
 
     ContFramePool(unsigned long _base_frame_no,
                   unsigned long _n_frames,
@@ -72,7 +82,7 @@ public:
      NOTE: This function must be called before the paging system
      is initialized.
      */
-    
+
     unsigned long get_frames(unsigned int _n_frames);
     /*
      Allocates a number of contiguous frames from the frame pool.
@@ -81,7 +91,7 @@ public:
      If successful, returns the frame number of the first frame.
      If fails, returns 0.
      */
-    
+
     void mark_inaccessible(unsigned long _base_frame_no,
                            unsigned long _n_frames);
     /*
@@ -90,7 +100,7 @@ public:
      _base_frame_no: Number of first frame to mark as inaccessible.
      _n_frames: Number of contiguous frames to mark as inaccessible.
      */
-    
+
     static void release_frames(unsigned long _first_frame_no);
     /*
      Releases a previously allocated contiguous sequence of frames
@@ -101,14 +111,14 @@ public:
      This function must first identify the correct frame pool and then call the frame
      pool's release_frame function.
      */
-    
+
     static unsigned long needed_info_frames(unsigned long _n_frames);
     /*
      Returns the number of frames needed to manage a frame pool of size _n_frames.
-     The number returned here depends on the implementation of the frame pool and 
+     The number returned here depends on the implementation of the frame pool and
      on the frame size.
-     EXAMPLE: For FRAME_SIZE = 4096 and a bitmap with a single bit per frame 
-     (not appropriate for contiguous allocation) one would need one frame to manage a 
+     EXAMPLE: For FRAME_SIZE = 4096 and a bitmap with a single bit per frame
+     (not appropriate for contiguous allocation) one would need one frame to manage a
      frame pool with up to 8 * 4096 = 32k frames = 128MB of memory!
      This function would therefore return the following value:
        _n_frames / 32k + (_n_frames % 32k > 0 ? 1 : 0) (always round up!)
