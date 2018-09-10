@@ -185,7 +185,44 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
 unsigned long ContFramePool::get_frames(unsigned int _n_frames)
 {
     // TODO: IMPLEMENTATION NEEEDED!
-    assert(false);
+    assert(n_free_frames >= _n_frames);
+
+    // Find a frame that is not being used
+    unsigned int frame_no = base_frame_no;
+    unsigned int n_frames = _n_frames;
+    unsigned int i = 0;
+    unsigned int j;
+    while(ext_bitmap[i] == INFO_HEAD_FRAME || ext_bitmap[i] == INFO_ALLOCATED_FRAME)
+    {
+      for(j=i;j<i+n_frames;j++)
+      {
+        if(ext_bitmap[j] == INFO_HEAD_FRAME || ext_bitmap[j] == INFO_ALLOCATED_FRAME)
+        {
+          // if allocated frames or head of a sequence frames are found anywhere, get out of the for  loop
+          i = j+1;
+          goto exit_for_loop;
+        }
+        if(j == i+n_frames-1)
+        {
+          // This means that we have found a sequence of _n_frames starting from i, so break from while loop
+          break;
+        }
+      }
+      exit_for_loop:
+    }
+    // change the status of n_frames contigous frames found
+    for(j=i;j<i+n_frames;j++)
+    {
+      ext_bitmap[j] = INFO_FRAME_ALLOCATED;
+    }
+    // change the status of initial frame to be head of sequence
+    ext_bitmap[i] = INFO_HEAD_FRAME;
+
+    // change the number of available frames
+    n_free_frames = n_free_frames - n_frames;
+    frame_no = frame_no + i;
+    // return the starting frame number of contigous frames
+    return(frame_no);
 }
 
 void ContFramePool::mark_inaccessible(unsigned long _base_frame_no,
