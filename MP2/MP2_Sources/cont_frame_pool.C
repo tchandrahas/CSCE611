@@ -109,7 +109,7 @@
 /* DATA STRUCTURES */
 /*--------------------------------------------------------------------------*/
 
-/* -- (none) -- */
+// Data structure to implement the pool list
 
 /*--------------------------------------------------------------------------*/
 /* CONSTANTS */
@@ -158,7 +158,7 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
     // Number of frames must be able to fill the bitmap
     //assert ((n_frames % 8) == 0);
 
-    // Proceed to mark in bitmap that all frames are allocated
+    // Mark in bitmap that all frames are allocated
     for(int i = 0; i < n_frames; i=i+1)
     {
       ext_bitmap[i] = INFO_FREE_FRAME;
@@ -189,38 +189,26 @@ unsigned long ContFramePool::get_frames(unsigned int _n_frames)
 
     // Find a frame that is not being used
     unsigned int frame_no = base_frame_no;
-    unsigned int n_frames = _n_frames;
+    unsigned int nframes = _n_frames;
     unsigned int i = 0;
     unsigned int j;
     while(ext_bitmap[i] == INFO_HEAD_FRAME || ext_bitmap[i] == INFO_ALLOCATED_FRAME)
     {
-      for(j=i;j<i+n_frames;j++)
-      {
-        if(ext_bitmap[j] == INFO_HEAD_FRAME || ext_bitmap[j] == INFO_ALLOCATED_FRAME)
-        {
-          // if allocated frames or head of a sequence frames are found anywhere, get out of the for  loop
-          i = j+1;
-          goto exit_for_loop;
-        }
-        if(j == i+n_frames-1)
-        {
-          // This means that we have found a sequence of _n_frames starting from i, so break from while loop
-          break;
-        }
-      }
-      exit_for_loop:
+      // iterate until a free frame is encountered
+      i++;
     }
+    // An ith frame is encountered to be free
+    frame_no = i+base_frame_no;
     // change the status of n_frames contigous frames found
-    for(j=i;j<i+n_frames;j++)
+    for(j=0;j<nframes;j++)
     {
-      ext_bitmap[j] = INFO_FRAME_ALLOCATED;
+      ext_bitmap[j+i] = INFO_FRAME_ALLOCATED;
     }
     // change the status of initial frame to be head of sequence
     ext_bitmap[i] = INFO_HEAD_FRAME;
 
     // change the number of available frames
-    n_free_frames = n_free_frames - n_frames;
-    frame_no = frame_no + i;
+    n_free_frames = n_free_frames - nframes;
     // return the starting frame number of contigous frames
     return(frame_no);
 }
@@ -229,13 +217,35 @@ void ContFramePool::mark_inaccessible(unsigned long _base_frame_no,
                                       unsigned long _n_frames)
 {
     // TODO: IMPLEMENTATION NEEEDED!
-    assert(false);
+    int i;
+    unsigned int bitmap_index;
+    for(i=_base_frame_no; i < (_base_frame_no+_n_frames); i++)
+    {
+      assert((i > base_frame_no) && (i < base_frame_no+n_frames));
+      ext_bitmap[bitmap_index] = INFO_ALLOCATED_FRAME;
+      n_free_frames--;
+    }
 }
 
 void ContFramePool::release_frames(unsigned long _first_frame_no)
 {
     // TODO: IMPLEMENTATION NEEEDED!
-    assert(false);
+    // Caluculate the bitmap index based upon the number of bits used for frame information bits used
+    unsigned int ext_bitmap_index = (_first_frame_no - base_frame_no);
+    if(ext_bitmap[ext_bitmap_index]!=INFO_HEAD_FRAME)
+    {
+      Console::puts("Error, Frame being released is not the head of  a sequence of frame\n");
+      assert(false);
+    }
+    // Else release the frames
+    unsigned int i = ext_bitmap_index;
+    while(ext_bitmap[i] != INFO_FREE_FRAME)
+    {
+      // change the information of the frames and increment the number of free frames
+      ext_bitmap[i] = INFO_FREE_FRAME;
+      n_free_frames++;
+      i++;
+    }
 }
 
 unsigned long ContFramePool::needed_info_frames(unsigned long _n_frames)
