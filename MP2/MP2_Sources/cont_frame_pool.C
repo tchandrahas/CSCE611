@@ -134,7 +134,6 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
 {
     // TODO: IMPLEMENTATION NEEEDED!
     // Do Assertion if number of information frames supplied exceeds the number of information frames required
-    assert(_n_info_frames >= needed_info_frames(_n_frames));
 
     // Copy the inputs to local variables
     base_frame_no = _base_frame_no;
@@ -152,6 +151,7 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
     else
     {
       // Management info should be stored in the given frame number in given number of information frames
+      assert(_n_info_frames >= needed_info_frames(_n_frames));
       ext_bitmap = (unsigned char*)(info_frame_no * n_info_frames * FRAME_SIZE);
     }
 
@@ -167,7 +167,9 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
     // if you are using frames with in the pool for information, mark them as used
     if(info_frame_no == 0)
     {
-      for(i=0;i<n_info_frames;i++)
+      n_info_frames = needed_info_frames(_n_frames);
+      assert(n_info_frames < n_free_frames);
+      for(int i=0;i<n_info_frames;i++)
       {
         ext_bitmap[i] = INFO_ALLOCATED_FRAME;
         n_free_frames--;
@@ -189,26 +191,47 @@ unsigned long ContFramePool::get_frames(unsigned int _n_frames)
 
     // Find a frame that is not being used
     unsigned int frame_no = base_frame_no;
-    unsigned int nframes = _n_frames;
+    unsigned int nget_frames = _n_frames;
     unsigned int i = 0;
     unsigned int j;
-    while(ext_bitmap[i] == INFO_HEAD_FRAME || ext_bitmap[i] == INFO_ALLOCATED_FRAME)
+    while(i<n_frames)
     {
-      // iterate until a free frame is encountered
-      i++;
+      inner_while_loop:
+      while(ext_bitmap[i] == INFO_HEAD_FRAME || ext_bitmap[i] == INFO_ALLOCATED_FRAME)
+      {
+        // iterate until a free frame is encountered
+        i++;
+      }
+      // check if _n_frames after the ith frame are free or not
+      for(j=i;j<i+nget_frames;j++)
+      {
+        // If any allocated frame is found revert back to finding another one
+        if(ext_bitmap[j] != INFO_FREE_FRAME)
+        {
+          i=i+1;
+          goto inner_while_loop;
+        }
+
+        else if(j == i+nget_frames-1)
+        {
+          // This means that we have found _n_frames that are free in this frame pool
+          goto outside_outer_while_loop;
+        }
+      }
     }
-    // An ith frame is encountered to be free
+    outside_outer_while_loop:
+    // An ith frame is encountered to be first in contigous free _n_frames
     frame_no = i+base_frame_no;
     // change the status of n_frames contigous frames found
-    for(j=0;j<nframes;j++)
+    for(j=0;j<nget_frames;j++)
     {
-      ext_bitmap[j+i] = INFO_FRAME_ALLOCATED;
+      ext_bitmap[j+i] = INFO_ALLOCATED_FRAME;
     }
     // change the status of initial frame to be head of sequence
     ext_bitmap[i] = INFO_HEAD_FRAME;
 
     // change the number of available frames
-    n_free_frames = n_free_frames - nframes;
+    n_free_frames = n_free_frames - nget_frames;
     // return the starting frame number of contigous frames
     return(frame_no);
 }
@@ -216,7 +239,7 @@ unsigned long ContFramePool::get_frames(unsigned int _n_frames)
 void ContFramePool::mark_inaccessible(unsigned long _base_frame_no,
                                       unsigned long _n_frames)
 {
-    // TODO: IMPLEMENTATION NEEEDED!
+    // IMPLEMENTATION NEEEDED!
     int i;
     unsigned int bitmap_index;
     for(i=_base_frame_no; i < (_base_frame_no+_n_frames); i++)
@@ -229,7 +252,7 @@ void ContFramePool::mark_inaccessible(unsigned long _base_frame_no,
 
 void ContFramePool::release_frames(unsigned long _first_frame_no)
 {
-    // TODO: IMPLEMENTATION NEEEDED!
+    //  IMPLEMENTATION NEEEDED!
     // Caluculate the bitmap index based upon the number of bits used for frame information bits used
     unsigned int ext_bitmap_index = (_first_frame_no - base_frame_no);
     if(ext_bitmap[ext_bitmap_index]!=INFO_HEAD_FRAME)
@@ -238,8 +261,9 @@ void ContFramePool::release_frames(unsigned long _first_frame_no)
       assert(false);
     }
     // Else release the frames
+    Console::puts("Head of the sequence found !!\n");
     unsigned int i = ext_bitmap_index;
-    while(ext_bitmap[i] != INFO_FREE_FRAME)
+    while((ext_bitmap[i] != INFO_FREE_FRAME)||(ext_bitmap[i] != INFO_HEAD_FRAME))
     {
       // change the information of the frames and increment the number of free frames
       ext_bitmap[i] = INFO_FREE_FRAME;
@@ -250,7 +274,7 @@ void ContFramePool::release_frames(unsigned long _first_frame_no)
 
 unsigned long ContFramePool::needed_info_frames(unsigned long _n_frames)
 {
-    // TODO: IMPLEMENTATION NEEEDED!
+    // IMPLEMENTATION NEEEDED!
     // Caluculate how many frame information can be stored in a frame
     unsigned int frame_info_capacity =(8*(FRAME_SIZE))/INFO_BITS_PER_FRAME;
     return (_n_frames/frame_info_capacity + (_n_frames % frame_info_capacity > 0 ? 1 : 0));

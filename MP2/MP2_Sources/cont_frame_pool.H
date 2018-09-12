@@ -53,6 +53,7 @@ private:
     unsigned int n_free_frames;
     unsigned char* ext_bitmap;
 
+    void mark_inaccessible(unsigned long _frame_no);
 public:
 
     // The frame size is the same as the page size, duh...

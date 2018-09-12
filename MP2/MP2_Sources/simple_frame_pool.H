@@ -41,19 +41,19 @@ class SimpleFramePool {
 private:
      /* -- DEFINE YOUR FRAME POOL DATA STRUCTURE(s) HERE. */
 
-  
+
     unsigned char * bitmap;        // We implement the simple frame pool with a bitmap
     unsigned int    nFreeFrames;   //
     unsigned long   base_frame_no; // Where does the frame pool start in phys mem?
     unsigned long   nframes;       // Size of the frame pool
     unsigned long   info_frame_no; // Where do we store the management information?
-    
+
     void mark_inaccessible(unsigned long _frame_no);
 
 public:
 
     static const unsigned int FRAME_SIZE = Machine::PAGE_SIZE;
-  
+
     SimpleFramePool(unsigned long _base_frame_no,
              unsigned long _nframes,
              unsigned long _info_frame_no);
@@ -84,12 +84,12 @@ public:
 
    static void release_frame(unsigned long _frame_no);
    /* Releases frame back to the given frame pool.
-      The frame is identified by the frame number. 
+      The frame is identified by the frame number.
       NOTE: This function is static because there may be more than one frame pool
       defined in the system, and it is unclear which one this frame belongs to.
       This function must first identify the correct frame pool and then call the frame
       pool's release_frame function. */
-    
+
     static unsigned long needed_info_frames(unsigned long _n_frames);
     /*
      Returns the number of frames needed to manage a frame pool of size _n_frames.
