@@ -134,6 +134,8 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
 {
     // TODO: IMPLEMENTATION NEEEDED!
 
+    // Assert that requested frames are multiple of 8
+    assert ((n_frames % 8) == 0);
     // Copy the inputs to local variables
     base_frame_no = _base_frame_no;
     n_frames = _n_frames;
@@ -155,7 +157,6 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
     }
 
     // Number of frames must be able to fill the bitmap
-    //assert ((n_frames % 8) == 0);
 
     // Mark in bitmap that all frames are allocated
     for(int i = 0; i < n_frames; i=i+1)
@@ -186,7 +187,7 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
 
     // put this frame pool into frame pool linked list
     // first check if this is the first in the frame pool linked list
-    if((frame_pool_ll_current == NULL)&&(frame_pool_ll_head == NULL))
+    if(frame_pool_ll_head == NULL)
     {
       frame_pool_ll_head = &frame_pool_entry;
       frame_pool_ll_current = frame_pool_ll_head;
@@ -273,24 +274,44 @@ void ContFramePool::mark_inaccessible(unsigned long _base_frame_no,
 void ContFramePool::release_frames(unsigned long _first_frame_no)
 {
     //  IMPLEMENTATION NEEEDED!
-    assert(false);
+    // First we have to figure out which frame pool this frame belongs to
+    // We do this by traversing through the linked list
+    assert((frame_pool_ll_head!=NULL)||(frame_pool_ll_current!=NULL));
+    frame_pool* traverse_frame_pool = frame_pool_ll_head;
+    while(traverse_frame_pool != NULL)
+    {
+      if((_first_frame_no >= traverse_frame_pool->base_frame_no)&&(_first_frame_no < (traverse_frame_pool->base_frame_no + traverse_frame_pool->n_frames)))
+      {
+        // we found the right frame pool
+        break;
+      }
+      else
+      {
+        traverse_frame_pool = traverse_frame_pool->next_frame_pool;
+      }
+    }
+
     // Caluculate the bitmap index based upon the number of bits used for frame information bits used
-    /*unsigned int ext_bitmap_index = (_first_frame_no - base_frame_no);
-    if(ext_bitmap[ext_bitmap_index]!=INFO_HEAD_FRAME)
+
+    unsigned int local_ext_bitmap_index = (_first_frame_no - traverse_frame_pool->base_frame_no);
+    unsigned char* local_ext_bitmap = traverse_frame_pool->ext_bitmap;
+    if(local_ext_bitmap[local_ext_bitmap_index]!=INFO_HEAD_FRAME)
     {
       Console::puts("Error, Frame being released is not the head of  a sequence of frame\n");
       assert(false);
     }
     // Else release the frames
-    Console::puts("Head of the sequence found !!\n");
-    unsigned int i = ext_bitmap_index;
-    while((ext_bitmap[i] != INFO_FREE_FRAME)||(ext_bitmap[i] != INFO_HEAD_FRAME))
+    //Console::puts("Head of the sequence found !!\n");
+    local_ext_bitmap[local_ext_bitmap_index]==INFO_FREE_FRAME;
+    unsigned int i = local_ext_bitmap_index+1;
+    while(local_ext_bitmap[i]==INFO_ALLOCATED_FRAME)
     {
       // change the information of the frames and increment the number of free frames
-      ext_bitmap[i] = INFO_FREE_FRAME;
-      n_free_frames++;
+      local_ext_bitmap[i] = INFO_FREE_FRAME;
+      traverse_frame_pool->n_free_frames++;
       i++;
-    }*/
+    }
+    Console::puts("Release frame successfull\n");
 }
 
 unsigned long ContFramePool::needed_info_frames(unsigned long _n_frames)
