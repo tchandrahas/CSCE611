@@ -36,7 +36,19 @@
 /* DATA STRUCTURES */
 /*--------------------------------------------------------------------------*/
 
-/* -- (none) -- */
+// Data structure to implement the frame pool as a linked list
+typedef struct frame_pool
+{
+  unsigned int base_frame_no;
+  unsigned long n_frames;
+  unsigned char* ext_bitmap;
+  unsigned int n_free_frames;
+  struct frame_pool* next_frame_pool;
+}frame_pool;
+
+// Initiate the memory needed for the list
+static frame_pool* frame_pool_ll_head;
+static frame_pool* frame_pool_ll_current;
 
 /*--------------------------------------------------------------------------*/
 /* C o n t F r a m e   P o o l  */
@@ -52,7 +64,7 @@ private:
     unsigned long n_info_frames;
     unsigned int n_free_frames;
     unsigned char* ext_bitmap;
-
+    frame_pool frame_pool_entry;
     void mark_inaccessible(unsigned long _frame_no);
 public:
 
