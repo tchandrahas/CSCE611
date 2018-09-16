@@ -21,10 +21,7 @@
 /*--------------------------------------------------------------------------*/
 
 // defines for frame status using one char per frame
-#define INFO_BITS_PER_FRAME 8
-#define INFO_FREE_FRAME 0x00
-#define INFO_HEAD_FRAME 0x0F
-#define INFO_ALLOCATED_FRAME 0xFF
+#define INFO_BITS_PER_FRAME 2
 
 /*--------------------------------------------------------------------------*/
 /* INCLUDES */
@@ -41,7 +38,8 @@ typedef struct frame_pool
 {
   unsigned int base_frame_no;
   unsigned long n_frames;
-  unsigned char* ext_bitmap;
+  unsigned char* ext_bitmap0;
+  unsigned char* ext_bitmap1;
   unsigned int n_free_frames;
   struct frame_pool* next_frame_pool;
 }frame_pool;
@@ -63,7 +61,8 @@ private:
     unsigned long info_frame_no;
     unsigned long n_info_frames;
     unsigned int n_free_frames;
-    unsigned char* ext_bitmap;
+    unsigned char* ext_bitmap0;
+    unsigned char* ext_bitmap1;
     frame_pool frame_pool_entry;
     void mark_inaccessible(unsigned long _frame_no);
 public:
