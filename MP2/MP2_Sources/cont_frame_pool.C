@@ -94,13 +94,13 @@
 /* DEFINES */
 /*--------------------------------------------------------------------------*/
 
-#define INFO_FREE_FRAME_CHECK(i) ((ext_bitmap0[i/8])&(0x00<<(i%8)) == (0x00<<(i%8))) && ((ext_bitmap1[i/8])&(0x00<<(i%8)) == (0x00<<(i%8)))
-#define INFO_HEAD_FRAME_CHECK(i) ((ext_bitmap0[i/8])&(0x01<<(i%8)) == (0x01<<(i%8))) && ((ext_bitmap1[i/8])&(0x01<<(i%8)) == (0x01<<(i%8)))
-#define INFO_ALLOCATED_FRAME_CHECK(i) ((ext_bitmap0[i/8])&(0x01<<(i%8)) == (0x01<<(i%8))) && ((ext_bitmap1[i/8])&(0x00<<(i%8)) == (0x00<<(i%8)))
+#define INFO_FREE_FRAME_CHECK(i) (((ext_bitmap0[i/8])&(0x01<<(i%8))) == (0x00<<(i%8))) && (((ext_bitmap1[i/8])&(0x01<<(i%8))) == (0x00<<(i%8)))
+#define INFO_HEAD_FRAME_CHECK(i) (((ext_bitmap0[i/8])&(0x01<<(i%8))) == (0x01<<(i%8))) && (((ext_bitmap1[i/8])&(0x01<<(i%8))) == (0x01<<(i%8)))
+#define INFO_ALLOCATED_FRAME_CHECK(i) (((ext_bitmap0[i/8])&(0x01<<(i%8))) == (0x01<<(i%8))) && (((ext_bitmap1[i/8])&(0x01<<(i%8))) == (0x00<<(i%8)))
 
-#define CHANGE_TO_FREE_FRAME(i) ext_bitmap0[(i/8)] = (ext_bitmap0[(i/8)])&(~(0x01 << (i%8))); ext_bitmap1[(i/8)] = (ext_bitmap1[(i/8)])&(~(0x01 << (i%8)))
-#define CHANGE_TO_ALLOCATED_FRAME(i) ext_bitmap0[(i/8)] = (ext_bitmap0[(i/8)])|(0x01 << (i%8));ext_bitmap1[(i/8)] = (ext_bitmap1[(i/8)])&(~(0x01 << (i%8)))
-#define CHANGE_TO_HEAD_FRAME(i) ext_bitmap0[(i/8)] = (ext_bitmap0[(i/8)])|(0x01 << (i%8));ext_bitmap1[(i/8)] = (ext_bitmap1[(i/8)])|(0x01 << (i%8))
+#define CHANGE_TO_FREE_FRAME(i) ext_bitmap0[(i/8)] &= (~(0x01<<(i%8))); ext_bitmap1[(i/8)] &= (~(0x01<<(i%8)))
+#define CHANGE_TO_ALLOCATED_FRAME(i) ext_bitmap0[(i/8)] |=(0x01<<(i%8)); ext_bitmap1[(i/8)] &= (~(0x01<<(i%8)))
+#define CHANGE_TO_HEAD_FRAME(i) ext_bitmap0[(i/8)] |= (0x01<<(i%8));ext_bitmap1[(i/8)] |= (0x01<<(i%8))
 /*--------------------------------------------------------------------------*/
 /* INCLUDES */
 /*--------------------------------------------------------------------------*/
@@ -155,14 +155,14 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
       n_info_frames = needed_info_frames(_n_frames);
       // Each frame need two bits, so we use two different frames to store first and second bits
       ext_bitmap0 = (unsigned char*)(base_frame_no * FRAME_SIZE);
-      ext_bitmap1 = (unsigned char*)(base_frame_no * (n_info_frames/2) * FRAME_SIZE);
+      ext_bitmap1 = (unsigned char*)((base_frame_no+n_info_frames/2) * FRAME_SIZE);
     }
     else
     {
       // Management info should be stored in the given frame number in given number of information frames
       assert(_n_info_frames >= needed_info_frames(_n_frames));
       ext_bitmap0 = (unsigned char*)(info_frame_no * FRAME_SIZE);
-      ext_bitmap1 = (unsigned char*)(info_frame_no * (_n_info_frames/2) * FRAME_SIZE);
+      ext_bitmap1 = (unsigned char*)((info_frame_no+_n_info_frames/2) * FRAME_SIZE);
     }
 
     // Number of frames must be able to fill the bitmap
@@ -171,19 +171,23 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
     // 00 indicates the frame is FREE
     // 01 indicates that frame is Allocated
     // 11 indicates that frame is head of sequence
-    for(int i = 0; i < (n_frames/8); i=i+1)
+    for(int i = 0; i < (n_frames); i=i+1)
     {
-      ext_bitmap0[i] = 0x00;
-      ext_bitmap1[i] = 0x00;
+      ext_bitmap0[i/8] = 0x00;
+      ext_bitmap1[i/8] = 0x00;
+      //Console::puti(INFO_FREE_FRAME_CHECK(i));Console::puti(INFO_ALLOCATED_FRAME_CHECK(i));Console::puti(INFO_HEAD_FRAME_CHECK(i));Console::puts("\n");
     }
 
     // if you are using frames with in the pool for information, mark them as used
     if(info_frame_no == 0)
     {
       assert(n_info_frames < n_free_frames);
-      for(int i=0;i<(n_info_frames);i++)
+      for(unsigned int i=0;i<(n_info_frames);i++)
       {
+        //Console::puti(i/8);Console::puts(",");Console::puti(ext_bitmap0[i/8]);Console::puts(",");Console::puti(ext_bitmap1[i/8]);Console::puts("\n");
         CHANGE_TO_ALLOCATED_FRAME(i);
+        //Console::putui(ext_bitmap0[i/8]);Console::puts(",");Console::putui(ext_bitmap1[i/8]);Console::puts("\n");
+        //Console::puti(INFO_FREE_FRAME_CHECK(i));Console::puti(INFO_ALLOCATED_FRAME_CHECK(i));Console::puti(INFO_HEAD_FRAME_CHECK(i));Console::puts("\n");
         n_free_frames--;
       }
     }
@@ -194,8 +198,8 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
     // Malloc for an entry in frame_pool linked list
     frame_pool_entry.base_frame_no = base_frame_no;
     frame_pool_entry.n_frames = n_frames;
-    frame_pool_entry.ext_bitmap0 = ext_bitmap0;
-    frame_pool_entry.ext_bitmap1 = ext_bitmap1;
+    frame_pool_entry.ext_bitmap0 = ext_bitmap0+0;
+    frame_pool_entry.ext_bitmap1 = ext_bitmap1+0;
 
     // put this frame pool into frame pool linked list
     // first check if this is the first in the frame pool linked list
@@ -211,7 +215,12 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
       frame_pool_ll_current->next_frame_pool = NULL;
     }
 
-    Console::puts("Frame Pool initialized\n");
+    Console::puts("Frame Pool initialized");Console::puts(" with base_frame_no as ");Console::puti(base_frame_no);Console::puts(" with number of frames as ");Console::puti(n_frames);Console::puts("\n");
+    Console::puts("Info frames are counted to be along");Console::puti(n_info_frames);Console::puts("Free frames are counted to be ");Console::puti(n_free_frames);Console::puts("\n");
+    for(int i=0;i<3;i++)
+    {
+      //Console::puti(INFO_FREE_FRAME_CHECK(i));Console::puti(INFO_ALLOCATED_FRAME_CHECK(i));Console::puti(INFO_HEAD_FRAME_CHECK(i));Console::puts("\n");
+    }
 
 }
 
@@ -225,48 +234,70 @@ unsigned long ContFramePool::get_frames(unsigned int _n_frames)
     unsigned int nget_frames = _n_frames;
     unsigned int i = 0;
     unsigned int j;
+    while_loop:
     while(i<n_frames)
     {
-      inner_while_loop:
-      while(INFO_HEAD_FRAME_CHECK(i) || INFO_ALLOCATED_FRAME_CHECK(i))
+      //Console::puts("Here in loop3\n");
+      if(INFO_FREE_FRAME_CHECK(i))
+      {
+        // check if _n_frames after the ith frame are free or not
+        for(j=i;j<i+nget_frames;j++)
+        {
+          // If any allocated frame is found revert back to finding another one
+          if(INFO_FREE_FRAME_CHECK(j))
+          {
+            if(j == (i+nget_frames-1))
+            {
+              goto outside;
+            }
+          }
+
+          else
+          {
+            //Console::puts("Here in loop1\n");
+            i=j+1;
+            goto while_loop;
+          }
+
+
+        }
+      }
+      else
       {
         // iterate until a free frame is encountered
+        //Console::puts("Here in loop2\n");
+        //Console::puts("searched for  a free frame ");Console::puti(i);Console::puti(INFO_FREE_FRAME_CHECK(i));Console::puti(INFO_HEAD_FRAME_CHECK(i));Console::puti(INFO_ALLOCATED_FRAME_CHECK(i));Console::puts("\n");
         i++;
-      }
-      // check if _n_frames after the ith frame are free or not
-      for(j=i;j<i+nget_frames;j++)
-      {
-        // If any allocated frame is found revert back to finding another one
-        if(INFO_FREE_FRAME_CHECK(j))
-        {
-          i=i+1;
-          goto inner_while_loop;
-        }
-
-        else if(j == i+nget_frames-1)
-        {
-          // This means that we have found _n_frames that are free in this frame pool
-          goto outside_outer_while_loop;
-        }
+        goto while_loop;
       }
     }
-    outside_outer_while_loop:
+    outside:
     // An ith frame is encountered to be first in contigous free _n_frames
     frame_no = i+base_frame_no;
+    //Console::puts("The i value was found out to be ");Console::puti(i);Console::puts("\n");
     // change the status of n_frames contigous frames found
-    for(j=0;j<nget_frames;j++)
+    for(j=i;j<i+nget_frames;j++)
     {
       //ext_bitmap[j+i] = INFO_ALLOCATED_FRAME;
-      CHANGE_TO_ALLOCATED_FRAME(j+i);
+      CHANGE_TO_ALLOCATED_FRAME(j);
+      //Console::puti(j+i);Console::puti(INFO_FREE_FRAME_CHECK(j+i));Console::puti(INFO_HEAD_FRAME_CHECK(j+i));Console::puti(INFO_ALLOCATED_FRAME_CHECK(j+i));Console::puts("\n");
     }
     // change the status of initial frame to be head of sequence
     //ext_bitmap[i] = INFO_HEAD_FRAME;
+    /*for(j=i;j<i+nget_frames;j++)
+    {
+      Console::puti(j);Console::puti(INFO_FREE_FRAME_CHECK(j));Console::puti(INFO_HEAD_FRAME_CHECK(j));Console::puti(INFO_ALLOCATED_FRAME_CHECK(j));Console::puts("\n");
+    }*/
     CHANGE_TO_HEAD_FRAME(i);
-
+    /*for(j=i;j<i+nget_frames;j++)
+    {
+      Console::puti(j);Console::puti(INFO_FREE_FRAME_CHECK(j));Console::puti(INFO_HEAD_FRAME_CHECK(j));Console::puti(INFO_ALLOCATED_FRAME_CHECK(j));Console::puts("\n");
+    }*/
     // change the number of available frames
     n_free_frames = n_free_frames - nget_frames;
     frame_pool_entry.n_free_frames = n_free_frames;
     // return the starting frame number of contigous frames
+    Console::puts("Got "); Console::puti(_n_frames); Console::puts(" frames from "); Console::puti(frame_no); Console::puts(" ,remaining free frames = "); Console::puti(n_free_frames); Console::puts("\n");
     return(frame_no);
 }
 
@@ -307,22 +338,29 @@ void ContFramePool::release_frames(unsigned long _first_frame_no)
     }
 
     // Caluculate the bitmap index based upon the number of bits used for frame information bits used
-
+    //Console::puts("The base_frame_no is found to be "); Console::puti(traverse_frame_pool->base_frame_no);Console::puts("\n");
     unsigned int local_ext_bitmap_index = (_first_frame_no - traverse_frame_pool->base_frame_no);
+    //Console::puts("The index is found to be "); Console::puti(local_ext_bitmap_index);Console::puts("\n");
     unsigned char* local_ext_bitmap0 = traverse_frame_pool->ext_bitmap0;
     unsigned char* local_ext_bitmap1 = traverse_frame_pool->ext_bitmap1;
-    if(/*local_ext_bitmap[local_ext_bitmap_index]!=INFO_HEAD_FRAME*/((local_ext_bitmap0[local_ext_bitmap_index/8])&(0x01<<(local_ext_bitmap_index%8)) == (0x01<<(local_ext_bitmap_index%8))) && ((local_ext_bitmap1[local_ext_bitmap_index/8])&(0x01<<(local_ext_bitmap_index%8)) == (0x01<<(local_ext_bitmap_index%8))))
+    // Assertion to verify if bitmap pointers are not NULL
+    assert((local_ext_bitmap0!=NULL)&&(local_ext_bitmap1!=NULL));
+    //Console::puts("The information of frame is ");Console::puti((local_ext_bitmap0[local_ext_bitmap_index/8])&(0x01<<(local_ext_bitmap_index%8)));Console::puts(", ");Console::puti((local_ext_bitmap1[local_ext_bitmap_index/8])&(0x01<<(local_ext_bitmap_index%8)));Console::puts("\n");
+    //Console::puts("The expectation is ");Console::puti((0x01<<(local_ext_bitmap_index%8)));Console::puts(", ");Console::puti((0x01<<(local_ext_bitmap_index%8)));Console::puts("\n");
+    if((((local_ext_bitmap0[local_ext_bitmap_index/8])&(0x01<<(local_ext_bitmap_index%8))) == (0x01<<(local_ext_bitmap_index%8))) && (((local_ext_bitmap1[local_ext_bitmap_index/8])&(0x01<<(local_ext_bitmap_index%8))) == (0x01<<(local_ext_bitmap_index%8))))
     {
-      Console::puts("Head of the sequence found !!\n");
+      //Console::puts("Head of the sequence found at");Console::puti(local_ext_bitmap_index);Console::puts("\n");
       unsigned int i = local_ext_bitmap_index+1;
+      Console::puts("The information present is ");Console::puti((local_ext_bitmap0[i/8])&(0x01<<(i%8)));Console::puts(", ");Console::puti((local_ext_bitmap1[i/8])&(0x01<<(i%8)));Console::puts("\n");
       while(((local_ext_bitmap0[i/8])&(0x01<<(i%8)) == (0x01<<(i%8))) && ((local_ext_bitmap1[i/8])&(0x01<<(i%8)) == (0x00<<(i%8))))
       {
         // change the information of the frames and increment the number of free frames
         //local_ext_bitmap[i] = INFO_FREE_FRAME;
-        local_ext_bitmap0[(i/8)] = (local_ext_bitmap0[(i/8)])&(~(0x01 << (i%8))); local_ext_bitmap1[(i/8)] = (local_ext_bitmap1[(i/8)])&(~(0x01 << (i%8)));
+        local_ext_bitmap0[(i/8)] &=(~(0x01 << (i%8))); local_ext_bitmap1[(i/8)] &=(~(0x01 << (i%8)));
         traverse_frame_pool->n_free_frames++;
         i++;
       }
+      Console::puts("Number of frames freed = ");Console::puti(i-(local_ext_bitmap_index));Console::puts("\n");
     }
     else
     {
@@ -336,6 +374,15 @@ unsigned long ContFramePool::needed_info_frames(unsigned long _n_frames)
     // IMPLEMENTATION NEEEDED!
     // Caluculate how many frame information can be stored in a frame
     unsigned int frame_info_capacity =(8*(FRAME_SIZE))/INFO_BITS_PER_FRAME;
-    return (_n_frames/frame_info_capacity + ((_n_frames % frame_info_capacity) > 0 ? 1 : 0));
+    unsigned long return_value = _n_frames/frame_info_capacity + ((_n_frames % frame_info_capacity) > 0 ? 1 : 0);
+    //Minimum 2 frames are needed to store ext_bitmap0 and ext_bitmap1
+    if(return_value > 2)
+    {
+      return return_value;
+    }
+    else
+    {
+      return 2;
+    }
 
 }
