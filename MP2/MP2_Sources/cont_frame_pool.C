@@ -161,6 +161,7 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
     {
       // Management info should be stored in the given frame number in given number of information frames
       assert(_n_info_frames >= needed_info_frames(_n_frames));
+      n_info_frames = _n_info_frames;
       ext_bitmap0 = (unsigned char*)(info_frame_no * FRAME_SIZE);
       ext_bitmap1 = (unsigned char*)((info_frame_no+_n_info_frames/2) * FRAME_SIZE);
     }
@@ -215,8 +216,8 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
       frame_pool_ll_current->next_frame_pool = NULL;
     }
 
-    Console::puts("Frame Pool initialized");Console::puts(" with base_frame_no as ");Console::puti(base_frame_no);Console::puts(" with number of frames as ");Console::puti(n_frames);Console::puts("\n");
-    Console::puts("Info frames are counted to be along");Console::puti(n_info_frames);Console::puts("Free frames are counted to be ");Console::puti(n_free_frames);Console::puts("\n");
+    //Console::puts("Frame Pool initialized");Console::puts(" with base_frame_no as ");Console::puti(base_frame_no);Console::puts(" with number of frames as ");Console::puti(n_frames);Console::puts("\n");
+    //Console::puts("Info frames are counted to be ");Console::puti(n_info_frames);Console::puts("Free frames are counted to be ");Console::puti(n_free_frames);Console::puts("\n");
     for(int i=0;i<3;i++)
     {
       //Console::puti(INFO_FREE_FRAME_CHECK(i));Console::puti(INFO_ALLOCATED_FRAME_CHECK(i));Console::puti(INFO_HEAD_FRAME_CHECK(i));Console::puts("\n");
@@ -297,7 +298,7 @@ unsigned long ContFramePool::get_frames(unsigned int _n_frames)
     n_free_frames = n_free_frames - nget_frames;
     frame_pool_entry.n_free_frames = n_free_frames;
     // return the starting frame number of contigous frames
-    Console::puts("Got "); Console::puti(_n_frames); Console::puts(" frames from "); Console::puti(frame_no); Console::puts(" ,remaining free frames = "); Console::puti(n_free_frames); Console::puts("\n");
+    //Console::puts("Got "); Console::puti(_n_frames); Console::puts(" frames from "); Console::puti(frame_no); Console::puts(" ,remaining free frames = "); Console::puti(n_free_frames); Console::puts("\n");
     return(frame_no);
 }
 
@@ -306,15 +307,21 @@ void ContFramePool::mark_inaccessible(unsigned long _base_frame_no,
 {
     // IMPLEMENTATION NEEEDED!
     int i;
-    unsigned int bitmap_index;
-    for(i=_base_frame_no; i < (_base_frame_no+_n_frames); i++)
+    unsigned int bitmap_position;
+    // Get the head position, change that position to HEAD of the sequence, decrement the number of free frames
+    bitmap_position = _base_frame_no - base_frame_no;
+    CHANGE_TO_HEAD_FRAME(bitmap_position);
+    n_free_frames--;
+    frame_pool_entry.n_free_frames = n_free_frames;
+    // Mark rest of the frames as Allocated, decrement the number of free frames
+    for(i=_base_frame_no+1; i < (_base_frame_no+_n_frames); i++)
     {
-      assert((i > base_frame_no) && (i < base_frame_no+n_frames));
-      //ext_bitmap[bitmap_index] = INFO_ALLOCATED_FRAME;
-      CHANGE_TO_ALLOCATED_FRAME(bitmap_index);
+      bitmap_position = i-base_frame_no;
+      CHANGE_TO_ALLOCATED_FRAME(bitmap_position);
       n_free_frames--;
       frame_pool_entry.n_free_frames = n_free_frames;
     }
+    //Console::puts("The ");Console::puti(_n_frames);Console::puts("  frames starting from ");Console::puti(_base_frame_no);Console::puts(" are marked inaccessible\n");
 }
 
 void ContFramePool::release_frames(unsigned long _first_frame_no)
@@ -351,8 +358,8 @@ void ContFramePool::release_frames(unsigned long _first_frame_no)
     {
       //Console::puts("Head of the sequence found at");Console::puti(local_ext_bitmap_index);Console::puts("\n");
       unsigned int i = local_ext_bitmap_index+1;
-      Console::puts("The information present is ");Console::puti((local_ext_bitmap0[i/8])&(0x01<<(i%8)));Console::puts(", ");Console::puti((local_ext_bitmap1[i/8])&(0x01<<(i%8)));Console::puts("\n");
-      while(((local_ext_bitmap0[i/8])&(0x01<<(i%8)) == (0x01<<(i%8))) && ((local_ext_bitmap1[i/8])&(0x01<<(i%8)) == (0x00<<(i%8))))
+      //Console::puts("The information present is ");Console::puti((local_ext_bitmap0[i/8])&(0x01<<(i%8)));Console::puts(", ");Console::puti((local_ext_bitmap1[i/8])&(0x01<<(i%8)));Console::puts("\n");
+      while((((local_ext_bitmap0[i/8])&(0x01<<(i%8))) == (0x01<<(i%8))) && (((local_ext_bitmap1[i/8])&(0x01<<(i%8))) == (0x00<<(i%8))))
       {
         // change the information of the frames and increment the number of free frames
         //local_ext_bitmap[i] = INFO_FREE_FRAME;
@@ -360,7 +367,7 @@ void ContFramePool::release_frames(unsigned long _first_frame_no)
         traverse_frame_pool->n_free_frames++;
         i++;
       }
-      Console::puts("Number of frames freed = ");Console::puti(i-(local_ext_bitmap_index));Console::puts("\n");
+      //Console::puts("Number of frames freed = ");Console::puti(i-(local_ext_bitmap_index));Console::puts(" from frame_no ");Console::puti(_first_frame_no);Console::puts(" \n");
     }
     else
     {
