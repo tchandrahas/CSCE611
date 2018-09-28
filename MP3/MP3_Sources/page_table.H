@@ -52,9 +52,9 @@ private:
   unsigned long        * page_directory;     /* where is page directory located? */
 
 public:
-  static const unsigned int PAGE_SIZE        = Machine::PAGE_SIZE; 
+  static const unsigned int PAGE_SIZE        = Machine::PAGE_SIZE;
   /* in bytes */
-  static const unsigned int ENTRIES_PER_PAGE = Machine::PT_ENTRIES_PER_PAGE; 
+  static const unsigned int ENTRIES_PER_PAGE = Machine::PT_ENTRIES_PER_PAGE;
   /* in entries, duh! */
 
   static void init_paging(ContFramePool * _kernel_mem_pool,
@@ -65,10 +65,10 @@ public:
   PageTable();
   /* Initializes a page table with a given location for the directory and the
      page table proper.
-     NOTE: The PageTable object still needs to be stored somewhere! 
-     Probably it is best to have it on the stack, as there is no 
+     NOTE: The PageTable object still needs to be stored somewhere!
+     Probably it is best to have it on the stack, as there is no
      memory manager yet...
-     NOTE2: It may also be simpler to create the first page table *before* 
+     NOTE2: It may also be simpler to create the first page table *before*
      paging has been enabled.
   */
 
@@ -88,4 +88,3 @@ public:
 };
 
 #endif
-
