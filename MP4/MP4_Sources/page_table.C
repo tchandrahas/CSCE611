@@ -151,6 +151,25 @@ void PageTable::handle_fault(REGS * _r)
   unsigned long user_or_kernel;
   unsigned long use_bit;
   unsigned long dirty_bit;
+  // Variables needed to handle the checking of address
+  bool is_legetimate_val;
+  Vmpool* current_vm_pool = vm_pool_linked_list_head;
+  // check for validity of the input address, by traversin through the entire linked list
+  // start off with the head of linked list
+  while(current_vm_pool == NULL)
+  {
+    is_legetimate_val = current_vm_pool->is_legitimate();
+    if(is_legitimate_val == true)
+    {
+      current_vm_pool = current_vm_pool->next_vm_pool;
+    }
+    else
+    {
+      Console::puts("Found an illegal address\n");
+      Console::puts("Should abort the execution\n");
+      assert(false);
+    }
+  }
   if(directory_valid_bit == 0)
   {
     // Memory access beyoung already allocated
@@ -247,6 +266,25 @@ void PageTable::register_pool(VMPool * _vm_pool)
 
 void PageTable::free_page(unsigned long _page_no)
 {
-  
+  // variables for changing the status of page
+  unsigned long valid_bit;
+  unsigned long read_or_write;
+  unsigned long user_or_kernel;
+  unsigned long use_bit;
+  unsigned long dirty_bit;
+
+  unsigned long page_directory_entry;
+  unsigned long page_table_entry;
+  page_directory_entry = (_page_no>>10);
+  page_table_entry = (_page_no & 0x000003FF);
+
+  valid_bit = 0x00000000;
+  read_or_write = 0x00000001;
+  user_or_kernel = 0x00000001;
+  use_bit = 0x00000000;
+  dirty_bit = 0x00000000;
+  *((unsigned long*)((1023<<22)|(page_directory_entry << 12)|(page_table_entry << 2)|0)) = (0<<20)|(dirty_bit<<5)|(use_bit<<4)|(user_or_kernel<<2)|(read_or_write<<1)|(valid_bit);
+  unsigned int cr3_read = read_cr3();
+  write_cr3(cr3_read);
   Console::puts("freed page\n");
 }

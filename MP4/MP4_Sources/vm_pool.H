@@ -46,10 +46,13 @@ private:
   ContFramePool* frame_pool;
   PageTable* page_table;
   unsigned int machine_page_size;
-
+  unsigned long free_size;
+  unsigned long* allocated_region_starting_address;
+  unsigned long* allocated_region_size;
+  unsigned long num_allocated_regions;
 public:
    VMPool* next_vm_pool;
-   
+
    VMPool(unsigned long  _base_address,
           unsigned long  _size,
           ContFramePool *_frame_pool,

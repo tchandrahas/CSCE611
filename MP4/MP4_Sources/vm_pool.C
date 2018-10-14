@@ -52,53 +52,73 @@ VMPool::VMPool(unsigned long  _base_address, unsigned long  _size, ContFramePool
   frame_pool = _frame_pool;
   page_table = _page_table;
   machine_page_size = page_table->PAGE_SIZE;
+  free_size = size;
+  num_allocated_regions = 0;
   // register the vmpool with PageTable Class
   page_table->register(this);
+  // Leave aside a frame base_address to store
+  free_size = size - machine_page_size;
+  // Hopefully the page_fault handler kicks in for the below accesses
+  allocated_region_starting_address = (base_address);
+  allocated_region_size = (base_address+((machine_size)/2));
+  // Fill in the ordered pair to indicate that first page worthy of data is already occupied
+  *(allocated_region_starting_address) = base_address;
+  *(allocated_region_size) = machine_page_size;
+  num_allocated_regions++;
   Console::puts("Constructed VMPool object.\n");
 }
 
 unsigned long VMPool::allocate(unsigned long _size)
 {
   // Declare the required variables
-  unsigned long physical_frame_number;
-  unsigned long page_table_entry;
-  // buffer the input _size to a local variable
-  unsigned int num_bytes = _size;
-  // caluculate the number of frames needed for the given size
-  unsigned int num_frames;
-  if((num_bytes%machine_page_size)>0)
-  {
-    num_frames = (num_bytes/machine_page_size)+1;
-  }
-  else
-  {
-    num_frames = (num_bytes/machine_page_size);
-  }
-  // We get the physical frames from the input physical frame pool
-  physical_frame_number = frame_pool.get_frames(num_frames);
-  // Do Error handling for get_frames() function failure
-  if(physical_frame_number < 0)
-  {
-    Console::puts("Unable to find physical frames, Check the code !!\n");
-  }
-  Console::puts("Got the starting physical frame as");Console::putui(physical_frame_number);Console::puts("for the request\n");
-  // Make a page table entry for newly allocated frame
-  // first caluculate the page table entry with base_address
-  base_page_table_entry = ((base_address & 0x003FF000)>>12);
-  for(unsigned int i=0;i<num_frames;i++)
-  {
-    *()
-  }
-  Console::puts("Allocated region of memory.\n");
+  unsigned long available_base_address;
+  // get the available base address from the array
+  available_base_address = *(allocated_region_starting_address+num_allocated_regions-1) + *(allocated_region_size+num_allocated_regions-1);
+  // Update the array with this new ENTRY
+  *(allocated_region_starting_address+num_allocated_regions) = available_base_address;
+  *(allocated_region_size+num_allocated_regions) = _size;
+  num_allocated_regions++;
+  Console::puts("Allocated region of memory of size ");Console::putui(_size);Console::puts("from address ");Console::putui(available_base_address);Console::puts("\n");
+  // return the starting address of requested region
+  return available_base_address;
 }
 
 void VMPool::release(unsigned long _start_address)
 {
-    assert(false);
-    Console::puts("Released region of memory.\n");
+  unsigned int i;
+  unsigned int j;
+  unsigned int num_pages_occupied;
+  unsigned long free_page_number
+  for(i=0;i<num_allocated_regions;i++)
+  {
+    if(*(allocated_region_starting_address+i) == _start_address)
+    {
+      num_pages_occupied = (*(allocated_region_size+i)/machine_page_size) +((*(allocated_region_size+i)%machine_page_size)>0)?1:0;
+      for(j=0;j<num_pages_occupied;j++)
+      {
+        free_page_number = ((_start_address)>>12)+i;
+        page_table->free_page(free_page_number);
+      }
+      Console::puts("Released region of memory should be starting from ");Console::putui(*(allocated_region_starting_address+i));Console::puts(" with size of ");Console::putui(*(allocated_region_size+i));Console::puts("\n");
+      *(allocated_region_starting_address+i) = 0;
+      *(allocated_region_size+i) = 0;
+      num_allocated_regions--;
+    }
+  }
+  Console::puts("Released region of memory.\n");
 }
 
-bool VMPool::is_legitimate(unsigned long _address) {
-    assert(false);
-    Console::puts("Checked whether address is part of an allocated region.\n");
+bool VMPool::is_legitimate(unsigned long _address)
+{
+
+  // check if the address falls in the range of vmpool or not
+  if((_address>=base_address)&&(_address<(_base_address+size)))
+  {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+  Console::puts("Checked whether address is part of an allocated region.\n");
 }
