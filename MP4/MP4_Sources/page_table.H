@@ -36,6 +36,8 @@
 /*--------------------------------------------------------------------------*/
 /* P A G E - T A B L E  */
 /*--------------------------------------------------------------------------*/
+static VMPool* vm_pool_list_head;
+static VMPool* vm_pool_list_current;
 
 class PageTable {
 
@@ -47,12 +49,11 @@ private:
   static ContFramePool * kernel_mem_pool;    /* Frame pool for the kernel memory */
   static ContFramePool * process_mem_pool;   /* Frame pool for the process memory */
   static unsigned long   shared_size;        /* size of shared address space */
+  // Variables for making a list of virtual memory pools in the system
+
 
   /* DATA FOR CURRENT PAGE TABLE */
   unsigned long        * page_directory;     /* where is page directory located? */
-  // linked-list for vm-pool
-  VMPool* vm_pool_list_head;
-  VMPool* vm_pool_list_current;
 public:
   static const unsigned int PAGE_SIZE        = Machine::PAGE_SIZE;
   /* in bytes */
@@ -89,9 +90,10 @@ public:
 
   // -- NEW IN MP4
 
-  void register_pool(VMPool * _vm_pool);
+  void register_pool(VMPool* _vm_pool);
   /* Register a virtual memory pool with the page table. */
-
+  static void add_vm_pool_list(VMPool* _vm_pool);
+  /* Checks if this address belongs to any other virtual memory pools*/
   void free_page(unsigned long _page_no);
   /* If page is valid, release frame and mark page invalid. */
 

@@ -51,8 +51,7 @@ private:
   unsigned long* allocated_region_size;
   unsigned long num_allocated_regions;
 public:
-   VMPool* next_vm_pool;
-
+  VMPool* next_vm_pool;
    VMPool(unsigned long  _base_address,
           unsigned long  _size,
           ContFramePool *_frame_pool,

@@ -151,23 +151,27 @@ void PageTable::handle_fault(REGS * _r)
   unsigned long user_or_kernel;
   unsigned long use_bit;
   unsigned long dirty_bit;
+  // Test for legitemacy
   // Variables needed to handle the checking of address
-  bool is_legetimate_val;
-  Vmpool* current_vm_pool = vm_pool_linked_list_head;
+  bool is_legitimate_val;
+  VMPool* current_vm_pool = vm_pool_list_head;
   // check for validity of the input address, by traversin through the entire linked list
   // start off with the head of linked list
-  while(current_vm_pool == NULL)
+  while(1)
   {
-    is_legetimate_val = current_vm_pool->is_legitimate();
+    is_legitimate_val = current_vm_pool->is_legitimate(fault_virtual_address);
     if(is_legitimate_val == true)
     {
-      current_vm_pool = current_vm_pool->next_vm_pool;
+      break;
     }
     else
     {
-      Console::puts("Found an illegal address\n");
-      Console::puts("Should abort the execution\n");
-      assert(false);
+      current_vm_pool = current_vm_pool->next_vm_pool;
+      if(current_vm_pool == NULL)
+      {
+        Console::puts("An Illegal address was produced by the CPU");
+        assert(false);
+      }
     }
   }
   if(directory_valid_bit == 0)
@@ -208,7 +212,7 @@ void PageTable::handle_fault(REGS * _r)
     use_bit = 0x00000000;
     dirty_bit = 0x00000000;
     *(fault_page_directory_entry) = (new_page_table*PAGE_SIZE)|(dirty_bit<<5)|(use_bit<<4)|(user_or_kernel<<2)|(read_or_write<<1)|(valid_bit);
-    //Console::puts("Page Directory entry made at ");Console::putui((unsigned long)(fault_page_directory_entry));Console::puts(" Conent: ");Console::putui(*(fault_page_directory_entry));Console::puts("\n");
+    Console::puts("Page Directory entry made at ");Console::putui((unsigned long)(fault_page_directory_entry));Console::puts(" Conent: ");Console::putui(*(fault_page_directory_entry));Console::puts("\n");
   }
   else
   {
@@ -216,7 +220,7 @@ void PageTable::handle_fault(REGS * _r)
     fault_page_table_offset = ((fault_virtual_address & 0x003FF000)>>12);
     //Console::puts("Page Table offset for faulty page is found to be ");Console::putui(fault_page_table_offset);Console::puts(" \n");
     fault_page_table_addr = (*(fault_page_directory_entry))&(0xFFFFF000);
-    //Console::puts("Page Table entry for faulty page is found to be ");Console::putui((unsigned long)fault_page_table_addr);Console::puts(" \n");
+    Console::puts("Page Table entry for faulty page is found to be ");Console::putui((unsigned long)fault_page_table_addr);Console::puts(" \n");
     // check the valid bit on the page table entry
     page_valid_bit = *((unsigned long*)(fault_page_table_addr+(4*fault_page_table_offset)))&(0x00000001);
     if(page_valid_bit == 1)
@@ -235,35 +239,41 @@ void PageTable::handle_fault(REGS * _r)
       user_or_kernel = 0x00000001;
       use_bit = 0x00000000;
       dirty_bit = 0x00000000;
-      *((unsigned long*)(fault_page_table_addr+(4*fault_page_table_offset))) = (free_frame_number*PAGE_SIZE)|(dirty_bit<<5)|(use_bit<<4)|(user_or_kernel<<2)|(read_or_write<<1)|(valid_bit);
+      *((unsigned long*)((1023<<22)|(fault_page_table_offset)|(fault_page_table_offset<<2)|0)) = (free_frame_number*PAGE_SIZE)|(dirty_bit<<5)|(use_bit<<4)|(user_or_kernel<<2)|(read_or_write<<1)|(valid_bit);
     }
 
   }
   Console::puts("handled page fault\n");
 }
 
-void PageTable::register_pool(VMPool * _vm_pool)
+void PageTable::register_pool(VMPool* _vm_pool)
 {
-    // put the virtual pool in our linked-list pool
-    if(vm_pool_list_head == NULL)
-    {
-      // This means that the vm pool is not initialized
-      // Make assignment to the head and make it the current node
-      vm_pool_list_head = _vm_pool;
-      vm_pool_list_current = vm_pool_list_head;
-      vm_pool_list_current->next_vm_pool = NULL;
-    }
-    else
-    {
-      // the list is already initiated
-      // Make the assignment to the next node and make it the current node
-      vm_pool_list_current->next_vm_pool = _vm_pool;
-      vm_pool_list_current = vm_pool_list_current->next_vm_pool;
-      vm_pool_list_current->next_vm_pool = NULL;
-    }
-    Console::puts("registered VM pool\n");
+  // put the virtual pool in our linked-list pool
+  PageTable::add_vm_pool_list(_vm_pool);
+  Console::puts("registered VM pool\n");
 }
+void PageTable::add_vm_pool_list(VMPool* _vm_pool)
+{
+  // Buffer the inputs
+  VMPool* vm_pool;
+  vm_pool = _vm_pool;
 
+  if(vm_pool_list_head == NULL)
+  {
+    // This means that the vm pool is not initialized
+    // Make assignment to the head and make it the current node
+    vm_pool_list_head = vm_pool;
+    vm_pool_list_current = vm_pool_list_head;
+  }
+  else
+  {
+    // the list is already initiated
+    // Make the assignment to the next node and make it the current node
+    vm_pool_list_current->next_vm_pool = vm_pool;
+    vm_pool_list_current = vm_pool_list_current->next_vm_pool;
+    vm_pool_list_current->next_vm_pool = NULL;
+  }
+}
 void PageTable::free_page(unsigned long _page_no)
 {
   // variables for changing the status of page
