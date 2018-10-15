@@ -43,6 +43,7 @@ class VMPool { /* Virtual Memory Pool */
 private:
   unsigned long base_address;
   unsigned long size;
+  unsigned long size_in_frames;
   ContFramePool* frame_pool;
   PageTable* page_table;
   unsigned int machine_page_size;

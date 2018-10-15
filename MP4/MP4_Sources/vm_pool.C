@@ -46,6 +46,12 @@
 
 VMPool::VMPool(unsigned long  _base_address, unsigned long  _size, ContFramePool *_frame_pool, PageTable *_page_table)
 {
+  // status bits for writing to the page directory and page table
+  unsigned long valid_bit;
+  unsigned long read_or_write;
+  unsigned long user_or_kernel;
+  unsigned long use_bit;
+  unsigned long dirty_bit;
   // buffer the inputs to private variables
   base_address = _base_address;
   size = _size;
@@ -56,15 +62,32 @@ VMPool::VMPool(unsigned long  _base_address, unsigned long  _size, ContFramePool
   num_allocated_regions = 0;
   // register the vmpool with PageTable Class
   page_table->register_pool(this);
+  // Caluculate the size of virtual memory pool in terms of paper
+  size_in_frames = (size/machine_page_size)+((size%machine_page_size)>0)?1:0;
   // Leave aside a frame base_address to store
-  free_size = size - machine_page_size;
-  // Hopefully the page_fault handler kicks in for the below accesses
-  //allocated_region_starting_address = (unsigned long*)(base_address);
-  //allocated_region_size = (unsigned long*)(base_address+((machine_page_size)/2));
-  // Fill in the ordered pair to indicate that first page worthy of data is already occupied
-  //*(allocated_region_starting_address) = base_address;
-  //*(allocated_region_size) = machine_page_size;
-  //num_allocated_regions++;
+  if(size_in_frames > 1)
+  {
+    unsigned long page_table_frame_number = frame_pool->get_frames(1);
+    unsigned long data_frame_number = frame_pool->get_frames(1);
+    unsigned long page_directory_entry = (base_address & (0xFFC00000))>>22;
+    unsigned long page_table_entry = (base_address & (0x003FF000))>>12;
+    // Make the entries into page_directory and page table by recursive lookup
+    valid_bit = 0x00000001;
+    read_or_write = 0x00000001;
+    user_or_kernel = 0x00000000;
+    use_bit = 0x00000000;
+    dirty_bit = 0x00000000;
+    *((unsigned long*)((1023<<22)|(1023<<12)|(page_directory_entry<<2)|0)) = (page_table_frame_number*machine_page_size)|(dirty_bit<<5)|(use_bit<<4)|(user_or_kernel<<2)|(read_or_write<<1)|(valid_bit);
+    *((unsigned long*)((1023<<22)|(page_directory_entry<<12)|(page_table_entry<<2)|0)) = (data_frame_number*machine_page_size)|(dirty_bit<<5)|(use_bit<<4)|(user_or_kernel<<2)|(read_or_write<<1)|(valid_bit);
+    free_size = size - machine_page_size;
+    // Now that we have a mapping we can go a head and use the first frame for storing the list of regions allocated
+    allocated_region_starting_address = (unsigned long*)(base_address);
+    allocated_region_size = (unsigned long*)(base_address+((machine_page_size)/2));
+    // Make the first entry in the regions occupied list
+    *(allocated_region_starting_address) = base_address;
+    *(allocated_region_size) = machine_page_size;
+    num_allocated_regions++;
+  }
   Console::puts("Constructed VMPool object.\n");
 }
 
