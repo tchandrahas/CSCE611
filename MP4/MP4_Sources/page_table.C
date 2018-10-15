@@ -43,7 +43,7 @@ PageTable::PageTable()
   unsigned long use_bit;
   unsigned long dirty_bit;
   // get 1 frame from kernel pool to store the page directory
-  page_directory_frame_number = kernel_mem_pool->get_frames(1);
+  page_directory_frame_number = process_mem_pool->get_frames(1);
   // do error handling for page_directory_frame_number
   if(page_directory_frame_number == 0)
   {
@@ -55,7 +55,7 @@ PageTable::PageTable()
     Console::puts("Got physical frame number ");Console::putui(page_directory_frame_number);Console::puts(" for page_directory\n");
   }*/
   // get 1 frames from kernel pool to store the page table of the first 4MB
-  page_table_frame_number = kernel_mem_pool->get_frames(1);
+  page_table_frame_number = process_mem_pool->get_frames(1);
   // do error handling for page_table_frame_number
   if(page_table_frame_number == 0)
   {
@@ -143,7 +143,7 @@ void PageTable::handle_fault(REGS * _r)
   //Console::puts("Local Page Directory is found to be at ");Console::putui(local_page_directory);Console::puts("\n");
   // Reason for fault
   unsigned long fault_page_directory_offset = ((fault_virtual_address & 0xFFC00000)>>22);
-  unsigned long* fault_page_directory_entry = (unsigned long*)((local_page_directory)+(4*fault_page_directory_offset));
+  unsigned long* fault_page_directory_entry = (unsigned long*)((1023<<22)|(1023<<12)|(fault_page_directory_offset<<2));
   //Console::puts("Faulty Page Directory Entry found at ");Console::putui((unsigned long) fault_page_directory_entry);Console::puts("\n");
   unsigned long fault_page_table_offset;
   unsigned long fault_page_table_addr;
