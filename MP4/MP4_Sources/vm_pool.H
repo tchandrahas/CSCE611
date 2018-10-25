@@ -41,8 +41,6 @@ class PageTable;
 
 class VMPool { /* Virtual Memory Pool */
 private:
-  unsigned long base_address;
-  unsigned long size;
   unsigned long size_in_frames;
   ContFramePool* frame_pool;
   PageTable* page_table;
@@ -53,6 +51,8 @@ private:
   unsigned long num_allocated_regions;
 public:
   VMPool* next_vm_pool;
+  unsigned long base_address;
+  unsigned long size;
    VMPool(unsigned long  _base_address,
           unsigned long  _size,
           ContFramePool *_frame_pool,

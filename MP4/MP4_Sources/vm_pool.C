@@ -63,44 +63,34 @@ VMPool::VMPool(unsigned long  _base_address, unsigned long  _size, ContFramePool
   // register the vmpool with PageTable Class
   page_table->register_pool(this);
   // Caluculate the size of virtual memory pool in terms of paper
-  size_in_frames = (size/machine_page_size)+((size%machine_page_size)>0)?1:0;
-  // Leave aside a frame base_address to store
-  if(size_in_frames > 1)
-  {
-    unsigned long page_table_frame_number = frame_pool->get_frames(1);
-    unsigned long data_frame_number = frame_pool->get_frames(1);
-    unsigned long page_directory_entry = (base_address & (0xFFC00000))>>22;
-    unsigned long page_table_entry = (base_address & (0x003FF000))>>12;
-    // Make the entries into page_directory and page table by recursive lookup
-    valid_bit = 0x00000001;
-    read_or_write = 0x00000001;
-    user_or_kernel = 0x00000000;
-    use_bit = 0x00000000;
-    dirty_bit = 0x00000000;
-    *((unsigned long*)((1023<<22)|(1023<<12)|(page_directory_entry<<2)|0)) = (page_table_frame_number*machine_page_size)|(dirty_bit<<5)|(use_bit<<4)|(user_or_kernel<<2)|(read_or_write<<1)|(valid_bit);
-    *((unsigned long*)((1023<<22)|(page_directory_entry<<12)|(page_table_entry<<2)|0)) = (data_frame_number*machine_page_size)|(dirty_bit<<5)|(use_bit<<4)|(user_or_kernel<<2)|(read_or_write<<1)|(valid_bit);
-    free_size = size - machine_page_size;
-    // Now that we have a mapping we can go a head and use the first frame for storing the list of regions allocated
-    allocated_region_starting_address = (unsigned long*)(base_address);
-    allocated_region_size = (unsigned long*)(base_address+((machine_page_size)/2));
-    // Make the first entry in the regions occupied list
-    *(allocated_region_starting_address) = base_address;
-    *(allocated_region_size) = machine_page_size;
-    num_allocated_regions++;
-  }
-  Console::puts("Constructed VMPool object.\n");
+  assert(size>machine_page_size);
+  allocated_region_starting_address = (unsigned long*)base_address;
+  allocated_region_size = (unsigned long*)(base_address+2048);
+  //update the allocation list
+  allocated_region_starting_address[num_allocated_regions] = base_address;
+  allocated_region_size[num_allocated_regions] = 4096;
+  num_allocated_regions++;
+  free_size = size-4096;
+  Console::puts("Constructed VMPool object with "); Console::puts("Base Address: ");Console::putui(base_address);Console::puts(" size: ");Console::putui(size);Console::puts("\n");
 }
 
 unsigned long VMPool::allocate(unsigned long _size)
 {
+  // check the requested size against available free size
+  if(_size>free_size)
+  {
+    Console::puts("Not enough in the virtual memory pool");
+    assert(false);
+  }
   // Declare the required variables
   unsigned long available_base_address;
   // get the available base address from the array
-  available_base_address = *(allocated_region_starting_address+num_allocated_regions-1) + *(allocated_region_size+num_allocated_regions-1);
+  available_base_address = allocated_region_starting_address[num_allocated_regions-1] + allocated_region_size[num_allocated_regions-1];
   // Update the array with this new ENTRY
-  *(allocated_region_starting_address+num_allocated_regions) = available_base_address;
-  *(allocated_region_size+num_allocated_regions) = _size;
+  allocated_region_starting_address[num_allocated_regions] = available_base_address;
+  allocated_region_size[num_allocated_regions] = _size;
   num_allocated_regions++;
+  free_size = free_size - _size;
   Console::puts("Allocated region of memory of size ");Console::putui(_size);Console::puts("from address ");Console::putui(available_base_address);Console::puts("\n");
   // return the starting address of requested region
   return available_base_address;
@@ -117,10 +107,11 @@ void VMPool::release(unsigned long _start_address)
     if(*(allocated_region_starting_address+i) == _start_address)
     {
       num_pages_occupied = (*(allocated_region_size+i)/machine_page_size) +((*(allocated_region_size+i)%machine_page_size)>0)?1:0;
+      Console::puts("Number of pages occupied in this VM Pool was ");Console::putui(num_pages_occupied);Console::puts("\n");
       for(j=0;j<num_pages_occupied;j++)
       {
         free_page_number = ((_start_address)>>12)+i;
-      //  (*page_table)::free_page(free_page_number);
+        page_table->free_page(free_page_number);
       }
       Console::puts("Released region of memory should be starting from ");Console::putui(*(allocated_region_starting_address+i));Console::puts(" with size of ");Console::putui(*(allocated_region_size+i));Console::puts("\n");
       *(allocated_region_starting_address+i) = 0;
@@ -133,9 +124,19 @@ void VMPool::release(unsigned long _start_address)
 
 bool VMPool::is_legitimate(unsigned long _address)
 {
+  unsigned int i;
 
   // check if the address falls in the range of vmpool or not
-  if((_address>=base_address)&&(_address<(base_address+size)))
+  for(i=0;i<num_allocated_regions;i++)
+  {
+    Console::puts("Region Starting Address : ");Console::putui(allocated_region_starting_address[i]);Console::puts(" Size: ");Console::putui(allocated_region_size[i]);Console::puts("\n");
+    if((_address >= allocated_region_starting_address[i])&&(_address<(allocated_region_starting_address[i]+allocated_region_size[i])))
+      {
+        Console::puts("The Address was found in a region with starting address "); Console::putui(*(allocated_region_starting_address+i));Console::puts("with size ");Console::putui(*(allocated_region_size+i));Console::puts("\n");
+        return true;
+      }
+  }
+  if((_address >= base_address)&&(_address < base_address+size))
   {
     return true;
   }

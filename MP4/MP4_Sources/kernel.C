@@ -214,9 +214,8 @@ int main() {
     /* -- MOST OF WHAT WE NEED IS SETUP. THE KERNEL CAN START. */
 
     Console::puts("Hello World!\n");
-    Console::puts("Came Here\n");
     /* Comment out the following line to test the VM Pools */
-#define _TEST_PAGE_TABLE_
+//#define _TEST_PAGE_TABLE_
 
 #ifdef _TEST_PAGE_TABLE_
 

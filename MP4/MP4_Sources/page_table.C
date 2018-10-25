@@ -42,7 +42,7 @@ PageTable::PageTable()
   unsigned long user_or_kernel;
   unsigned long use_bit;
   unsigned long dirty_bit;
-  // get 1 frame from kernel pool to store the page directory
+  // get 1 frame from process memory pool to store the page directory
   page_directory_frame_number = process_mem_pool->get_frames(1);
   // do error handling for page_directory_frame_number
   if(page_directory_frame_number == 0)
@@ -54,7 +54,7 @@ PageTable::PageTable()
   {
     Console::puts("Got physical frame number ");Console::putui(page_directory_frame_number);Console::puts(" for page_directory\n");
   }*/
-  // get 1 frames from kernel pool to store the page table of the first 4MB
+  // get 1 frames from process  pool to store the page table of the first 4MB
   page_table_frame_number = process_mem_pool->get_frames(1);
   // do error handling for page_table_frame_number
   if(page_table_frame_number == 0)
@@ -104,11 +104,11 @@ PageTable::PageTable()
   dirty_bit = 0x00000000;
   // Make the upper most entry in paging directory to point to the starting of page directory
   *((unsigned long*)((page_directory_frame_number*PAGE_SIZE)+(4*1023))) = (page_directory_frame_number*PAGE_SIZE)|(dirty_bit<<5)|(use_bit<<4)|(user_or_kernel<<2)|(read_or_write<<1)|(valid_bit);
-  Console::puts("The Page directory starts at the address ");Console::putui((page_directory_frame_number*PAGE_SIZE));Console::puts("\n");
-  Console::puts("Last entry in the page directory is placed at address ");Console::putui((unsigned long)((page_directory_frame_number*PAGE_SIZE)+(4*1023)));Console::puts(" with value ");Console::putui(*((unsigned long*)((page_directory_frame_number*PAGE_SIZE)+(4*1023))));Console::puts("\n");
+  //Console::puts("The Page directory starts at the address ");Console::putui((page_directory_frame_number*PAGE_SIZE));Console::puts("\n");
+  //Console::puts("Last entry in the page directory is placed at address ");Console::putui((unsigned long)((page_directory_frame_number*PAGE_SIZE)+(4*1023)));Console::puts(" with value ");Console::putui(*((unsigned long*)((page_directory_frame_number*PAGE_SIZE)+(4*1023))));Console::puts("\n");
   // copy the page_directory_frame_number into the page_directory variable of PageTable Class
   page_directory = (unsigned long*)((page_directory_frame_number*PAGE_SIZE));
-  Console::puts("Constructed Page Table object\n");
+  //Console::puts("Constructed Page Table object\n");
 }
 
 
@@ -160,7 +160,7 @@ void PageTable::handle_fault(REGS * _r)
   unsigned long dirty_bit;
   // Test for legitemacy
   // Variables needed to handle the checking of address
-  /*bool is_legitimate_val;
+  bool is_legitimate_val;
   VMPool* current_vm_pool = vm_pool_list_head;
   // check for validity of the input address, by traversin through the entire linked list
   // start off with the head of linked list
@@ -180,12 +180,12 @@ void PageTable::handle_fault(REGS * _r)
         assert(false);
       }
     }
-  }*/
+  }
   if(directory_valid_bit == 0)
   {
     // Memory access beyoung already allocated
     // Find a free frame pool to map the requested address
-    Console::puts("No page directory entry, so we need to create a new page table");Console::puts("\n");
+    //Console::puts("No page directory entry, so we need to create a new page table");Console::puts("\n");
     free_frame_number = process_mem_pool->get_frames(1);
     //Console::puts("Frame number got for alloting free space is ");Console::putui(free_frame_number);Console::puts(" \n");
     // Find a free frame to store the new page table
@@ -193,8 +193,8 @@ void PageTable::handle_fault(REGS * _r)
       //Console::puts("Frame number got for new page table is ");Console::putui(new_page_table);Console::puts(" \n");
     // find the page table entry and make the first entry for newly created page table
     fault_page_table_offset = ((fault_virtual_address & 0x003FF000)>>12);
-    Console::puts("Page offset for faulty page is found to be ");Console::putui(fault_page_table_offset);Console::puts(" \n");
-    Console::puts("Page Directory offset for faulty page is found to be ");Console::putui(fault_page_directory_offset);Console::puts("\n");
+    //Console::puts("Page offset for faulty page is found to be ");Console::putui(fault_page_table_offset);Console::puts(" \n");
+    //Console::puts("Page Directory offset for faulty page is found to be ");Console::putui(fault_page_directory_offset);Console::puts("\n");
     // Make the page directory entry first
     valid_bit = 0x00000001;
     read_or_write = 0x00000001;
@@ -202,7 +202,7 @@ void PageTable::handle_fault(REGS * _r)
     use_bit = 0x00000000;
     dirty_bit = 0x00000000;
     *(fault_page_directory_entry) = (new_page_table*PAGE_SIZE)|(dirty_bit<<5)|(use_bit<<4)|(user_or_kernel<<2)|(read_or_write<<1)|(valid_bit);
-    Console::puts("Page Directory entry made at ");Console::putui((unsigned long)(fault_page_directory_entry));Console::puts(" Content: ");Console::putui(*(fault_page_directory_entry));Console::puts("\n");
+    //Console::puts("Page Directory entry made at ");Console::putui((unsigned long)(fault_page_directory_entry));Console::puts(" Content: ");Console::putui(*(fault_page_directory_entry));Console::puts("\n");
     // intialize the page table to all zeros
     for(i=0;i<1024;i++)
     {
@@ -228,7 +228,7 @@ void PageTable::handle_fault(REGS * _r)
     fault_page_table_offset = ((fault_virtual_address & 0x003FF000)>>12);
     //Console::puts("Page Table offset for faulty page is found to be ");Console::putui(fault_page_table_offset);Console::puts(" \n");
     fault_page_table_addr = (*(fault_page_directory_entry))&(0xFFFFF000);
-    Console::puts("Page Table entry for faulty page is found to be ");Console::putui((unsigned long)fault_page_table_addr);Console::puts(" \n");
+    //Console::puts("Page Table entry for faulty page is found to be ");Console::putui((unsigned long)fault_page_table_addr);Console::puts(" \n");
     // check the valid bit on the page table entry
     page_valid_bit = *((unsigned long*)((1023<<22)|(fault_page_directory_offset<<12)|(fault_page_table_offset<<2)|0))&(0x00000001);
     if(page_valid_bit == 1)
@@ -238,7 +238,7 @@ void PageTable::handle_fault(REGS * _r)
     }
     else
     {
-      Console::puts("Page Directory entry is present, But Page Table Entry is missing, Just creation of a new page is entry\n");
+      //Console::puts("Page Directory entry is present, But Page Table Entry is missing, Just creation of a new page is entry\n");
       // get a free frame from the processor memory pool
       free_frame_number = process_mem_pool->get_frames(1);
       // Put this frame number in the page table
@@ -272,7 +272,6 @@ void PageTable::add_vm_pool_list(VMPool* _vm_pool)
     // Make assignment to the head and make it the current node
     vm_pool_list_head = vm_pool;
     vm_pool_list_current = vm_pool_list_head;
-    Console::puts("VM Pool attached is ");Console::putui((unsigned long)(vm_pool));
   }
   else
   {
@@ -282,6 +281,7 @@ void PageTable::add_vm_pool_list(VMPool* _vm_pool)
     vm_pool_list_current = vm_pool_list_current->next_vm_pool;
     vm_pool_list_current->next_vm_pool = NULL;
   }
+  Console::puts("A VM Pool is registered with starting address from ");Console::putui(vm_pool->base_address);Console::puts("\n");
 }
 void PageTable::free_page(unsigned long _page_no)
 {
@@ -305,5 +305,5 @@ void PageTable::free_page(unsigned long _page_no)
   *((unsigned long*)((1023<<22)|(page_directory_entry << 12)|(page_table_entry << 2)|0)) = (0<<20)|(dirty_bit<<5)|(use_bit<<4)|(user_or_kernel<<2)|(read_or_write<<1)|(valid_bit);
   unsigned int cr3_read = read_cr3();
   write_cr3(cr3_read);
-  Console::puts("freed page\n");
+  Console::puts("Freed page with VPN of ");Console::putui(_page_no);Console::puts("\n");
 }
