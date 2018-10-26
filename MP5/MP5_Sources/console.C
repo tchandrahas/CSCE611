@@ -1,4 +1,4 @@
-/* 
+/*
     File: Console.C
 
     Author: R. Bettati
@@ -24,7 +24,7 @@
 #include "machine.H"
 
 /*--------------------------------------------------------------------------*/
-/* DATA STRUCTURES */ 
+/* DATA STRUCTURES */
 /*--------------------------------------------------------------------------*/
 
     /* -- (none) -- */
@@ -87,7 +87,7 @@ void Console::scroll() {
 
 
 void Console::move_cursor() {
-    
+
     /* The equation for finding the index in a linear
     *  chunk of memory can be represented by:
     *  Index = [(y * width) + x] */
@@ -115,7 +115,7 @@ void Console::cls() {
 
     /* Sets the entire screen to spaces in our current
     *  color */
-    for(int i = 0; i < 25; i++) 
+    for(int i = 0; i < 25; i++)
         memsetw (textmemptr + i * 80, blank, 80);
 
     /* Update out virtual cursor, and then move the
@@ -127,7 +127,7 @@ void Console::cls() {
 
 /* Puts a single character on the screen */
 void Console::putch(const char _c){
- 
+
 
     /* Handle a backspace, by moving the cursor back one space */
     if(_c == 0x08)
@@ -145,6 +145,7 @@ void Console::putch(const char _c){
     else if(_c == '\r')
     {
         csr_x = 0;
+        Machine::outportb(0xe9, '\r');
     }
     /* We handle our newlines the way DOS and the BIOS do: we
     *  treat it as if a 'CR' was also there, so we bring the
@@ -153,6 +154,7 @@ void Console::putch(const char _c){
     {
         csr_x = 0;
         csr_y++;
+        Machine::outportb(0xe9, '\n');
     }
     /* Any character greater than and including a space, is a
     *  printable character. The equation for finding the index
@@ -163,6 +165,7 @@ void Console::putch(const char _c){
         unsigned short * where = textmemptr + (csr_y * 80 + csr_x);
         *where = _c | (attrib << 8);	/* Character AND attributes: color */
         csr_x++;
+        Machine::outportb(0xe9, _c);
     }
 
     /* If the cursor has reached the edge of the screen's width, we
@@ -204,10 +207,9 @@ void Console::putui(const unsigned int _n) {
 
 
 /* -- COLOR CONTROL -- */
-void Console::set_TextColor(const unsigned char _forecolor, 
+void Console::set_TextColor(const unsigned char _forecolor,
                             const unsigned char _backcolor) {
     /* Top 4 bytes are the background, bottom 4 bytes
     *  are the foreground color */
     attrib = (_backcolor << 4) | (_forecolor & 0x0F);
 }
-
