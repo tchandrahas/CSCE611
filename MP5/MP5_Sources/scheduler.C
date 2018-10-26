@@ -53,8 +53,9 @@ Scheduler::Scheduler()
 void Scheduler::yield() {
   // Get the next thread and dispatch to it
   NextThread = CurrentThread->next_thread_fifo_queue;
-  Console::puts("Thread with ThreadID ");Console::putui(CurrentThread->ThreadID());Console::puts(" yielded the CPU\n");Console::puts("\n");
-  Conosle::puts("Now Dispatching to Thread with ThreadID  ");Console::putui(NextThread->ThreadID());Conosle::puts(" \n");
+  Console::puts("Thread with ThreadID ");Console::putui(CurrentThread->ThreadId());Console::puts(" yielded the CPU\n");Console::puts("\n");
+  Console::puts("Now Dispatching to Thread with ThreadID  ");Console::putui(NextThread->ThreadId());Conosle::puts(" \n");
+  CurrentThread = NextThread;
   CurrentThread.dispatch_to(NextThread);
 }
 
