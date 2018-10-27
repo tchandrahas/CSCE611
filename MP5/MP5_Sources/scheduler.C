@@ -27,8 +27,6 @@
 /* DATA STRUCTURES */
 /*--------------------------------------------------------------------------*/
 Thread* ReadyQueue; // pointer that points to the ready queue
-Thread* CurrentThread; // Variables that stores the current thread
-Thread* NextThread; // variable that stores the next thread
 /*--------------------------------------------------------------------------*/
 /* CONSTANTS */
 /*--------------------------------------------------------------------------*/
@@ -51,18 +49,29 @@ Scheduler::Scheduler()
 }
 
 void Scheduler::yield() {
+  // First get the current thread and make it unrunnable
   // Get the next thread and dispatch to it
-  CurrentThread = Thread::CurrentThread();
-  NextThread = CurrentThread->next_thread_fifo_queue;
-  Console::puts("Thread with ThreadID ");Console::putui(CurrentThread->ThreadId());Console::puts(" yielded the CPU\n");Console::puts("\n");
-  Console::puts("Now Dispatching to Thread with ThreadID  ");Console::putui(NextThread->ThreadId());Console::puts(" \n");
-  CurrentThread = NextThread;
-  CurrentThread->dispatch_to(NextThread);
+  Thread* current_thread;
+  Thread* next_thread;
+  current_thread = Thread::CurrentThread();
+  // If this thread is present in ready queue remove it from there
+  if(ReadyQueue == current_thread)
+  {
+    // Remove this as head of ready queue
+    Console::puts("ReadyQueue head to be changed from thread with Id ");Console::putui(ReadyQueue->ThreadId());Console::puts(" to thread with Id ");Console::putui((ReadyQueue->next_thread_fifo_queue)->ThreadId());Console::puts("\n");
+    ReadyQueue = ReadyQueue->next_thread_fifo_queue;
+  }
+  Console::puts("Thread with ThreadID ");Console::putui(current_thread->ThreadId());Console::puts(" yielded the CPU\n");Console::puts("\n");
+  Console::puts("Now Dispatching to Thread with ThreadID  ");Console::putui(ReadyQueue->ThreadId());Console::puts(" \n");
+  Thread::dispatch_to(ReadyQueue);
 }
 
 void Scheduler::resume(Thread * _thread)
 {
-  add(_thread);
+  // buffer the input
+  Thread* input_thread = _thread;
+  // add the thread to the end of ready QUEUE
+  //add(input_thread);
 }
 
 void Scheduler::add(Thread * _thread)
@@ -79,18 +88,21 @@ void Scheduler::add(Thread * _thread)
   {
     ReadyQueue = new_thread;
     ReadyQueue->next_thread_fifo_queue = NULL;
+    Console::puts("Ready queue is found to be empty, So we add a thread with ID ");Console::putui(new_thread->ThreadId());Console::puts(" to the top of Ready queue\n");
   }
   else
   {
-    while(search_thread != NULL)
+    while(search_thread->next_thread_fifo_queue != NULL)
     {
       search_thread = search_thread->next_thread_fifo_queue;
     }
     search_thread->next_thread_fifo_queue = new_thread;
     new_thread->next_thread_fifo_queue = NULL;
+    Console::puts("The next thread of Thread with ID ");Console::putui(search_thread->ThreadId());Console::puts(" is found to be empty, So we add thread with ID ");Console::putui((search_thread->next_thread_fifo_queue)->ThreadId());Console::puts(" next to this one\n");
   }
 }
 
-void Scheduler::terminate(Thread * _thread) {
+void Scheduler::terminate(Thread * _thread)
+{
   assert(false);
 }
