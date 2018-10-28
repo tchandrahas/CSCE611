@@ -1,4 +1,4 @@
-/* 
+/*
     File: simple_timer.C
 
     Author: R. Bettati
@@ -6,7 +6,7 @@
             Texas A&M University
     Date  : 09/03/19
 
-    Simple control of the 
+    Simple control of the
 */
 
 /*--------------------------------------------------------------------------*/
@@ -31,7 +31,7 @@
 
 SimpleTimer::SimpleTimer(int _hz) {
   /* How long has the system been running? */
-  seconds =  0; 
+  seconds =  0;
   ticks   =  0; /* ticks since last "seconds" update.    */
 
   /* At what frequency do we update the ticks counter? */
@@ -51,12 +51,11 @@ SimpleTimer::SimpleTimer(int _hz) {
 void SimpleTimer::handle_interrupt(REGS *_r) {
 /* What to do when timer interrupt occurs? In this case, we update "ticks",
    and maybe update "seconds".
-   This must be installed as the interrupt handler for the timer in the 
+   This must be installed as the interrupt handler for the timer in the
    when the system gets initialized. (e.g. in "kernel.C") */
-
     /* Increment our "ticks" count */
     ticks++;
-
+    //Console::puts("Ticks are updated to ");Console::putui(ticks);Console::puts("\n");
     /* Whenever a second is over, we update counter accordingly. */
     if (ticks >= hz )
     {
@@ -64,6 +63,7 @@ void SimpleTimer::handle_interrupt(REGS *_r) {
         ticks = 0;
         Console::puts("One second has passed\n");
     }
+
 }
 
 
@@ -96,5 +96,3 @@ void SimpleTimer::wait(unsigned long _seconds) {
 
     while((seconds <= then_seconds) && (ticks < now_ticks));
 }
-
-

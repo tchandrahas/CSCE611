@@ -247,8 +247,8 @@ int main() {
     /* Question: Why do we want a timer? We have it to make sure that
                  we enable interrupts correctly. If we forget to do it,
                  the timer "dies". */
-
-    SimpleTimer timer(100); /* timer ticks every 10ms. */
+    // Change the timer frequency to 20, so that it ticks for every 50ms
+    SimpleTimer timer(59659); /* timer ticks every 10ms. */
     InterruptHandler::register_handler(0, &timer);
     /* The Timer is implemented as an interrupt handler. */
 

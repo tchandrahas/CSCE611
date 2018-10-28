@@ -89,7 +89,14 @@ static void thread_shutdown() {
 
 static void thread_start() {
      /* This function is used to release the thread for execution in the ready queue. */
-
+     // check the status of interrupts
+     bool interrupt_status = Machine::interrupts_enabled();
+     // if they are not enabled, enable them
+     if(interrupt_status == 0)
+     {
+       Machine::enable_interrupts();
+       Console::puts("Interrupts are enabled for this Machine, due to start of a thread execution\n");
+     }
      /* We need to add code, but it is probably nothing more than enabling interrupts. */
 }
 
@@ -204,7 +211,13 @@ void Thread::dispatch_to(Thread * _thread) {
          not return from this function ever when the system start code (in kernel.C) starts up
          the first thread.
 */
-
+    // disable the interrupts before switching the context, should be turned on in a different procedure
+    bool interrupt_status = Machine::interrupts_enabled();
+    if(interrupt_status == 1)
+    {
+      Machine::disable_interrupts();
+      Console::puts("Interrupts are disabled for this machine, due to context switching\n");
+    }
     /* The value of 'current_thread' is modified inside 'threads_low_switch_to()'. */
 
     threads_low_switch_to(_thread);
