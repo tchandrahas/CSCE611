@@ -40,6 +40,11 @@
 /*--------------------------------------------------------------------------*/
 /* EXTERNS */
 /*--------------------------------------------------------------------------*/
+extern "C"
+{
+  #include "scheduler.H"
+}
+extern "C" Scheduler* SYSTEM_SCHEDULER;
 
 Thread * current_thread = 0;
 /* Pointer to the currently running thread. This is used by the scheduler,
@@ -72,8 +77,11 @@ static void thread_shutdown() {
        It terminates the thread by releasing memory and any other resources held by the thread.
        This is a bit complicated because the thread termination interacts with the scheduler.
      */
+    Thread* current_thread = Thread::CurrentThread();
+    Console::puts("Thread with Thread Id ");Console::putui(current_thread->ThreadId());Console::puts(" about to be shutdown\n");
+    SYSTEM_SCHEDULER->terminate(current_thread);
+    // We should free up the memory some how
 
-    assert(false);
     /* Let's not worry about it for now.
        This means that we should have non-terminating thread functions.
     */
@@ -86,7 +94,7 @@ static void thread_start() {
 }
 
 void Thread::setup_context(Thread_Function _tfunction){
-    /* Sets up the initial context for the given kernel-only thread. 
+    /* Sets up the initial context for the given kernel-only thread.
        The thread is supposed the call the function _tfunction upon start.
     */
 
