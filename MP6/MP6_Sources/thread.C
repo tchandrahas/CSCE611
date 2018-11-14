@@ -91,13 +91,6 @@ void Thread::thread_destroy_memory()
 static void thread_start() {
      /* This function is used to release the thread for execution in the ready queue. */
      // check the status of interrupts
-     //bool interrupt_status = Machine::interrupts_enabled();
-     // if they are not enabled, enable them
-     //if(interrupt_status == 0)
-     //{
-    //   Machine::enable_interrupts();
-    //   Console::puts("Interrupts are enabled for this Machine, due to start of a thread execution\n");
-    // }
      /* We need to add code, but it is probably nothing more than enabling interrupts. */
 }
 
@@ -199,6 +192,7 @@ Thread::Thread(Thread_Function _tf, char * _stack, unsigned int _stack_size) {
     setup_context(_tf);
     next_thread_fifo_queue = NULL;
     next_thread_disk_block_queue = NULL;
+    present_in_thread_block_queue = 0;
 
 }
 
@@ -215,15 +209,20 @@ void Thread::dispatch_to(Thread * _thread) {
          the first thread.
 */
     // disable the interrupts before switching the context, should be turned on in a different procedure
-    /*bool interrupt_status = Machine::interrupts_enabled();
+    bool interrupt_status = Machine::interrupts_enabled();
     if(interrupt_status == 1)
     {
       Machine::disable_interrupts();
       Console::puts("Interrupts are disabled for this machine, due to context switching\n");
-    }*/
+    }
     /* The value of 'current_thread' is modified inside 'threads_low_switch_to()'. */
     threads_low_switch_to(_thread);
-
+    interrupt_status = Machine::interrupts_enabled();
+    if(interrupt_status == 0)
+    {
+      Machine::enable_interrupts();
+      Console::puts("Interrupts are enabled back for this machine, due to context switching\n");
+    }
     /* The call does not return until after the thread is context-switched back in. */
 }
 

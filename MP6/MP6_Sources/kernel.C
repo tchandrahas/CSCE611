@@ -54,6 +54,7 @@
 
 #include "simple_disk.H"    /* DISK DEVICE */
 #include "blocking_disk.H"
+#include "disk_interrupt_class.H"
                             /* YOU MAY NEED TO INCLUDE blocking_disk.H
 /*--------------------------------------------------------------------------*/
 /* MEMORY MANAGEMENT */
@@ -276,6 +277,8 @@ int main() {
 
     SimpleTimer timer(100); /* timer ticks every 10ms. */
     InterruptHandler::register_handler(0, &timer);
+    disk_interrupt_class disk_interrupt_handler;
+    InterruptHandler::register_handler(14,&disk_interrupt_handler);
     /* The Timer is implemented as an interrupt handler. */
 
 #ifdef _USES_SCHEDULER_

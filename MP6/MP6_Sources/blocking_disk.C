@@ -27,7 +27,6 @@ extern "C"
   #include "scheduler.H"
 }
 extern "C" Scheduler* SYSTEM_SCHEDULER;
-extern  "C" BlockingDisk* SYSTEM_DISK;
 /*--------------------------------------------------------------------------*/
 /* CONSTRUCTOR */
 /*--------------------------------------------------------------------------*/
@@ -56,7 +55,6 @@ void BlockingDisk::write(unsigned long _block_no, unsigned char * _buf)
 
 void BlockingDisk::wait_until_ready()
 {
-  Console::puts("Came here\n");
   while(!this->is_ready())
   {
     // Add this thread to blocking queue

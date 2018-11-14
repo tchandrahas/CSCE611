@@ -93,6 +93,11 @@ public:
    virtual void add_to_disk_blocked_queue(unsigned block_queue_id);
 
    virtual void remove_from_disk_blocked_queue(unsigned block_queue_id);
+   Thread* ReadyQueue; // pointer that points to the ready queue
+   Thread* ExecutingThread; // pointer that points to current executing thread
+   Thread**  DiskBlockingQueue; // pointer to blocking queues for all the disks created in the system
+   unsigned int num_disks_created;
+
 
 };
 
