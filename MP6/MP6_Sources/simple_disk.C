@@ -4,12 +4,12 @@
      Author      : Riccardo Bettati
      Modified    : 10/04/01
 
-     Description : Block-level READ/WRITE operations on a simple LBA28 disk 
+     Description : Block-level READ/WRITE operations on a simple LBA28 disk
                    using Programmed I/O.
-                   
+
                    The disk must be MASTER or SLAVE on the PRIMARY IDE controller.
 
-                   The code is derived from the "LBA HDD Access via PIO" 
+                   The code is derived from the "LBA HDD Access via PIO"
                    tutorial by Dragoniz3r. (google it for details.)
 */
 
@@ -61,7 +61,7 @@ void SimpleDisk::issue_operation(DISK_OPERATION _op, unsigned long _block_no) {
   Machine::outportb(0x1F5, (unsigned char)(_block_no >> 16));
                          /* send next 8 bits of block number */
   Machine::outportb(0x1F6, ((unsigned char)(_block_no >> 24)&0x0F) | 0xE0 | (disk_id << 4));
-                         /* send drive indicator, some bits, 
+                         /* send drive indicator, some bits,
                             highest 4 bits of block no */
 
   Machine::outportb(0x1F7, (_op == READ) ? 0x20 : 0x30);
@@ -73,7 +73,7 @@ bool SimpleDisk::is_ready() {
 }
 
 void SimpleDisk::read(unsigned long _block_no, unsigned char * _buf) {
-/* Reads 512 Bytes in the given block of the given disk drive and copies them 
+/* Reads 512 Bytes in the given block of the given disk drive and copies them
    to the given buffer. No error check! */
 
   issue_operation(READ, _block_no);
@@ -98,7 +98,7 @@ void SimpleDisk::write(unsigned long _block_no, unsigned char * _buf) {
   wait_until_ready();
 
   /* write data to port */
-  int i; 
+  int i;
   unsigned short tmpw;
   for (i = 0; i < 256; i++) {
     tmpw = _buf[2*i] | (_buf[2*i+1] << 8);
