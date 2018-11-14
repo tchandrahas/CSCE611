@@ -108,9 +108,9 @@ void Scheduler::terminate(Thread * _thread)
   if(ReadyQueue == input_thread)
   {
     // Remove this as head of ready queue
-    Console::puts("ReadyQueue head to be changed from thread with Id ");Console::putui(ReadyQueue->ThreadId());Console::puts(" to thread with Id ");Console::putui((ReadyQueue->next_thread_fifo_queue)->ThreadId());Console::puts("\n");
+    //Console::puts("ReadyQueue head to be changed from thread with Id ");Console::putui(ReadyQueue->ThreadId());Console::puts(" to thread with Id ");Console::putui((ReadyQueue->next_thread_fifo_queue)->ThreadId());Console::puts("\n");
     ReadyQueue = ReadyQueue->next_thread_fifo_queue;
   }
-  Console::puts("Thread with Id ");Console::putui(input_thread->ThreadId());Console::puts(" removed from ready queue\n");
+  //Console::puts("Thread with Id ");Console::putui(input_thread->ThreadId());Console::puts(" removed from ready queue\n");
   Thread::dispatch_to(ReadyQueue);
 }

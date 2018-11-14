@@ -86,6 +86,7 @@ public:
     /* Returns the currently running thread. NULL if no thread has started
        yet. */
     Thread* next_thread_fifo_queue;
+    void thread_destroy_memory();
 };
 
 #endif

@@ -248,7 +248,7 @@ int main() {
                  we enable interrupts correctly. If we forget to do it,
                  the timer "dies". */
     // Change the timer frequency to 20, so that it ticks for every 50ms
-    SimpleTimer timer(59659); /* timer ticks every 10ms. */
+    SimpleTimer timer(20); /* timer ticks every 10ms. */
     InterruptHandler::register_handler(0, &timer);
     /* The Timer is implemented as an interrupt handler. */
 
@@ -267,7 +267,7 @@ int main() {
 
     /* -- ENABLE INTERRUPTS -- */
 
-    Machine::enable_interrupts();
+    //Machine::enable_interrupts();
 
     /* -- MOST OF WHAT WE NEED IS SETUP. THE KERNEL CAN START. */
 

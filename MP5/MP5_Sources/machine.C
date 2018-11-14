@@ -39,7 +39,7 @@ void Machine::disable_interrupts() {
 }
 
 /*--------------------------------------------------------------------------*/
-/* PORT I/O OPERATIONS  */ 
+/* PORT I/O OPERATIONS  */
 /*--------------------------------------------------------------------------*/
 
 /* We will use this later on for reading from the I/O ports to get data

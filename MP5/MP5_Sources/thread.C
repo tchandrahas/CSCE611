@@ -79,6 +79,7 @@ static void thread_shutdown() {
      */
     Thread* current_thread = Thread::CurrentThread();
     Console::puts("Thread with Thread Id ");Console::putui(current_thread->ThreadId());Console::puts(" about to be shutdown\n");
+    current_thread->thread_destroy_memory();
     SYSTEM_SCHEDULER->terminate(current_thread);
     // We should free up the memory some how
 
@@ -86,7 +87,10 @@ static void thread_shutdown() {
        This means that we should have non-terminating thread functions.
     */
 }
-
+void Thread::thread_destroy_memory()
+{
+  delete[] stack;
+}
 static void thread_start() {
      /* This function is used to release the thread for execution in the ready queue. */
      // check the status of interrupts
