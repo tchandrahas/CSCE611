@@ -87,7 +87,6 @@ public:
        yet. */
     Thread* next_thread_fifo_queue;
     Thread* next_thread_disk_block_queue;
-    unsigned int present_in_thread_block_queue;
     void thread_destroy_memory();
 };
 

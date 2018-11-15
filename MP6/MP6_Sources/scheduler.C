@@ -119,15 +119,10 @@ unsigned int Scheduler::create_disk_blocked_queue()
 void Scheduler::add_to_disk_blocked_queue(unsigned int block_queue_id)
 {
   Thread* search_thread;
-  if(ExecutingThread->present_in_thread_block_queue == 1)
-  {
-    goto do_nothing;
-  }
   search_thread = DiskBlockingQueue[block_queue_id];
   if(DiskBlockingQueue[block_queue_id] == NULL)
   {
     DiskBlockingQueue[block_queue_id] = ExecutingThread;
-    ExecutingThread->present_in_thread_block_queue = 1;
     DiskBlockingQueue[block_queue_id]->next_thread_disk_block_queue = NULL;
     Console::puts("The Disk blocking queue is empty ");Console::puts("Thread with ID: ");Console::putui(ExecutingThread->ThreadId());Console::puts(" added to top of it\n");
   }
@@ -144,18 +139,24 @@ void Scheduler::add_to_disk_blocked_queue(unsigned int block_queue_id)
     ExecutingThread->next_thread_disk_block_queue = NULL;
     Console::puts("The next thread of Thread with ID ");Console::putui(search_thread->ThreadId());Console::puts(" is found to be empty, So we add thread with ID ");Console::putui((search_thread->next_thread_fifo_queue)->ThreadId());Console::puts(" next to this one in blocking queue\n");
   }
-  do_nothing:;
 }
 
 void Scheduler::remove_from_disk_blocked_queue(unsigned int block_queue_id)
 {
   Thread* search_thread = DiskBlockingQueue[block_queue_id];
-  Thread* previous_thread;
+  Thread* previous_thread = NULL;
   while(search_thread != NULL)
   {
-    if(search_thread == ExecutingThread)
+    if(DiskBlockingQueue[block_queue_id] == ExecutingThread)
+    {
+      Scheduler::resume(ExecutingThread);
+      DiskBlockingQueue[block_queue_id] = NULL;
+      break;
+    }
+    else if(search_thread == ExecutingThread)
     {
       previous_thread->next_thread_fifo_queue = search_thread->next_thread_fifo_queue;
+      search_thread->next_thread_fifo_queue = NULL;
       Scheduler::resume(search_thread);
       break;
     }

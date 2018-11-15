@@ -24,6 +24,7 @@ void disk_interrupt_class::handle_interrupt(REGS *_r)
   while(traverse_thread != NULL)
   {
     Console::puts("Traversed to thread with Id: ");Console::putui(traverse_thread->ThreadId());Console::puts(" in the block queue\n");
+    SYSTEM_SCHEDULER->ExecutingThread = traverse_thread;
     Thread::dispatch_to(traverse_thread);
     traverse_thread = traverse_thread->next_thread_disk_block_queue;
 

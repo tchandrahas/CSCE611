@@ -141,6 +141,7 @@ Thread * thread1;
 Thread * thread2;
 Thread * thread3;
 Thread * thread4;
+Thread * thread5;
 
 void fun1() {
     Console::puts("THREAD: "); Console::puti(Thread::CurrentThread()->ThreadId()); Console::puts("\n");
@@ -225,10 +226,28 @@ void fun4() {
 	  Console::puts("FUN 4: TICK ["); Console::puti(i); Console::puts("]\n");
        }
 
-       pass_on_CPU(thread1);
+       pass_on_CPU(thread5);
     }
 }
+void fun5()
+{
+  Console::puts("Function created for checking on the Blocking Queue\n");
+  int i;
+  Thread* search_thread;
+  for(i=0;i<=0;i++)
+  {
+    search_thread = SYSTEM_SCHEDULER->DiskBlockingQueue[i];
+    while(search_thread!=NULL)
+    {
 
+      SYSTEM_SCHEDULER->resume(thread5);
+      SYSTEM_SCHEDULER->ExecutingThread = search_thread;
+      Thread::dispatch_to(search_thread);
+      search_thread = search_thread->next_thread_disk_block_queue;
+    }
+  }
+  pass_on_CPU(thread1);
+}
 /*--------------------------------------------------------------------------*/
 /* MAIN ENTRY INTO THE OS */
 /*--------------------------------------------------------------------------*/
@@ -328,6 +347,11 @@ int main() {
     thread4 = new Thread(fun4, stack4, 1024);
     Console::puts("DONE\n");
 
+    Console::puts("CREATING THREAD 5...");
+    char * stack5 = new char[1024];
+    thread5 = new Thread(fun5, stack5, 1024);
+    Console::puts("DONE\n");
+
 #ifdef _USES_SCHEDULER_
 
     /* WE ADD thread2 - thread4 TO THE READY QUEUE OF THE SCHEDULER. */
@@ -335,6 +359,7 @@ int main() {
     SYSTEM_SCHEDULER->add(thread2);
     SYSTEM_SCHEDULER->add(thread3);
     SYSTEM_SCHEDULER->add(thread4);
+    SYSTEM_SCHEDULER->add(thread5);
 
 #endif
 

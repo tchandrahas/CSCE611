@@ -55,19 +55,24 @@ void BlockingDisk::write(unsigned long _block_no, unsigned char * _buf)
 
 void BlockingDisk::wait_until_ready()
 {
-  while(!this->is_ready())
+  // Add this thread to blocking queue
+  Console::puts("About to be added to blocked queue\n");
+  SYSTEM_SCHEDULER->add_to_disk_blocked_queue(this->block_queue_id);
+  Console::puts("The status of is_ready flag is ");Console::putui((unsigned int)this->is_ready());Console::puts("\n");
+  if(!(this->is_ready()))
   {
-    // Add this thread to blocking queue
-    Console::puts("About to be added to blocked queue\n");
-    SYSTEM_SCHEDULER->add_to_disk_blocked_queue(this->block_queue_id);
     // Yield the CPU
     Console::puts("About to yield the CPU to ready queue\n");
     SYSTEM_SCHEDULER->yield();
-    Console::puts("Recovered back from the yield\n");
+    Console::puts("The status of is_ready flag is ");Console::putui((unsigned int)this->is_ready());Console::puts("\n");
   }
+  Console::puts("Recovered back from the yield\n");
+  Console::puts("The thread is removed from blocking queue\n");
   // Add this thread to Ready Queue
-  SYSTEM_SCHEDULER->remove_from_disk_blocked_queue(this->block_queue_id);
+  SYSTEM_SCHEDULER->resume(SYSTEM_SCHEDULER->ExecutingThread);
+  SYSTEM_SCHEDULER->DiskBlockingQueue[block_queue_id] = NULL;
   // yield the CPU
+  Console::puts("Yielding the CPU again\n");
   SYSTEM_SCHEDULER->yield();
 }
 
