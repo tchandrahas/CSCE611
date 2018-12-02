@@ -38,20 +38,44 @@ File::File() {
 /*--------------------------------------------------------------------------*/
 
 int File::Read(unsigned int _n, char * _buf) {
-    Console::puts("reading from file\n");
-    assert(false);
+    Console::puts("reading from file..\n");
+    // buffer off the input variables
+    unsigned int num_chars = _n;
+    unsigned int i;
+    char* output_buffer = _buf;
+    // read the requested number of characters from file
+    for(i=0;i< num_chars;i++)
+    {
+      output_buffer[i] = *(current_position+i);
+    }
+    // Adjust the current position pointer
+    current_position = current_position + num_chars;
+    Console::puts("read ");Console::putui(num_chars);Console::puts("\n");
 }
 
 
 void File::Write(unsigned int _n, const char * _buf) {
-    Console::puts("writing to file\n");
-    assert(false);
+    Console::puts("writing to file...");
+    //buffer off the input variables
+    unsigned int num_chars = _n;
+    unsigned int i;
+    char* input_buffer = _buf;
+    // read the requested number of characters from file
+    for(i=0;i< num_chars;i++)
+    {
+      *(current_position+i) = input_buffer[i];
+    }
+    // Adjust the current position pointer
+    current_position = current_position + num_chars;
+    Console::puts("wrote ");Console::putui(num_chars);Console::puts("\n");
+
 }
 
 void File::Reset() {
-    Console::puts("reset current position in file\n");
+    Console::puts("reset current position in file...\n");
+
     assert(false);
-    
+
 }
 
 void File::Rewrite() {
