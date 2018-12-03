@@ -36,6 +36,7 @@ typedef struct file_metadata_entry
   int file_id;
   unsigned long index_block_no;
   unsigned long next_file_metadata_entry;
+  unsigned long num_blocks_allocated;
 } file_metadata_entry;
 
 typedef struct superblock
@@ -48,7 +49,7 @@ typedef struct superblock
 typedef struct created_file
 {
   int file_id; // file id of created file
-  File* file_ptr; // file pointer of created file
+  struct File* file_ptr; // file pointer of created file
   struct created_file* next_created_file; // pointer to next created file, which will be this struct again
 }created_file;
 /*--------------------------------------------------------------------------*/
@@ -63,7 +64,7 @@ typedef struct created_file
 
 class FileSystem {
 
-friend class File; /* -- not sure if we need this; feel free to delete */
+//
 
 private:
      /* -- DEFINE YOUR FILE SYSTEM DATA STRUCTURES HERE. */
@@ -90,7 +91,7 @@ public:
     static bool Format(SimpleDisk * _disk, unsigned int _size);
     /* Wipes any file system from the disk and installs an empty file system of given size. */
 
-    File * LookupFile(int _file_id);
+    struct File* LookupFile(int _file_id);
     /* Find file with given id in file system. If found, return the initialized
      file object. Otherwise, return null. */
 
@@ -101,5 +102,12 @@ public:
     bool DeleteFile(int _file_id);
     /* Delete file with given id in the file system; free any disk block occupied by the file. */
 
+    bool request_disk_block(unsigned long _metadata_block_no);
+
+    bool data_block_read(unsigned char* _read_buffer,unsigned long _metadata_block_no);
+
+    bool data_block_write(unsigned char* _write_buffer, unsigned long metadata_block_no);
+
+    bool erase_data_block(unsigned long _metadata_block_no);
 };
 #endif

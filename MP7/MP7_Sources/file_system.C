@@ -54,7 +54,7 @@ bool FileSystem::Mount(SimpleDisk * _disk)
     return false;
   }
   disk = _disk;
-  Conosle::puts("Now writing the disk with desired data structures..\n");
+  Console::puts("Now writing the disk with desired data structures..\n");
   // declare temporary data structures
   char temp_buffer[512];
   unsigned int i;
@@ -64,12 +64,12 @@ bool FileSystem::Mount(SimpleDisk * _disk)
   }
   // fill the block 0 with all 1's
   // this is because we are going to use 0 as an invalid condition
-  disk->write(0,temp_buffer);
+  disk->write(0,(unsigned char*)temp_buffer);
   // prepare the initial superblock for writing
   superblock temp_superblock[0];
   // prepare the disk allocation bitmap for writing
-  char temp_disk_block_allocation_bitmap[512];
-  char temp_directory_entry[512];
+  unsigned char temp_disk_block_allocation_bitmap[512];
+  unsigned char temp_directory_entry[512];
   for(i=0;i<512;i++)
   {
     temp_disk_block_allocation_bitmap[i] = 0x00;
@@ -80,13 +80,13 @@ bool FileSystem::Mount(SimpleDisk * _disk)
   // write the disk block at block number 2 of format disk
   disk->write(2,temp_disk_block_allocation_bitmap);
   // update this number in our superblock
-  temp_superblock->num_free_blocks = num_512_writes - 4;
+  temp_superblock->num_free_blocks = (size/512) - 4;
   temp_superblock->disk_block_allocation_bitmap = 2;
   temp_superblock->directory_entry = 3;
   // Write 0 in the directory entry
   disk->write(3,temp_directory_entry);
   // Finally write the superblock to disk and save the superblock disk number as a member of the file system
-  disk->write(1,(char*)superblock);
+  disk->write(1,(unsigned char*)temp_superblock);
   superblock_disk_block_no = 1;
   // Hopefully this sufficient for mounting
   Console::puts("done mounting our file system on the disk\n");
@@ -105,9 +105,9 @@ bool FileSystem::Format(SimpleDisk * _disk, unsigned int _size)
   unsigned int num_blocks_format_disk = num_512_writes;
   unsigned int i;
   // Just some print statement
-  Console::puts("No.of disk blocks to be formatted for this file-system is ");Console::putui(num_512_bytes);Console::puts("\n");
+  Console::puts("No.of disk blocks to be formatted for this file-system is ");Console::putui(num_512_writes);Console::puts("\n");
   // declare the zero buffer and fill it with zero's
-  char zero_buffer[512];
+  unsigned char zero_buffer[512];
   for(i=0;i<512;i++)
   {
     zero_buffer[i] = 0x00;
@@ -151,15 +151,17 @@ bool FileSystem::CreateFile(int _file_id)
     // get the superblock from the file system
     superblock temp_superblock[0];
     unsigned long new_file_metadata_block_no;
-    unsigned long temp_file_metdata_block_no;
+    unsigned long temp_file_metadata_block_no;
     unsigned long new_file_index_block_no;
     unsigned long temp_directory_entry;
+    file_metadata_entry new_file_metadata[0];
+    file_metadata_entry temp_file_metadata[0];
     File* new_file;
     created_file* new_created_file;
-    disk->read(superblock_disk_block_no,(char*)temp_superblock);
+    disk->read(superblock_disk_block_no,(unsigned char*)temp_superblock);
     Console::puts("Read Superblock from the file system..It has ");Console::putui(temp_superblock->num_free_blocks);Console::puts(" free blocks in it's file system");
     // Get the directory entry to create a new entry for file meta-data
-    unsigned int temp_directory_entry = temp_superblock->directory_entry;
+    temp_directory_entry = temp_superblock->directory_entry;
     if(temp_directory_entry == 0)
     {
       Console::puts("The directory entry is zero, This file creation would populate it\n");
@@ -168,28 +170,28 @@ bool FileSystem::CreateFile(int _file_id)
       new_file_index_block_no = FileSystem::get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
       // populate the entries of temporary file metadata entry
       new_file_metadata->file_id = _file_id;
-      new_file_metatdata->next_file_metadata_entry = 0;
+      new_file_metadata->next_file_metadata_entry = 0;
       new_file_metadata->index_block_no = new_file_index_block_no;
       // Write the meta data block to the disk
-      disk->write(new_file_metadata_block_no,(char*)new_file_metadata);
+      disk->write(new_file_metadata_block_no,(unsigned char*)new_file_metadata);
       // update the directory entry and number of free blocks information in the super block
       temp_superblock->directory_entry = new_file_metadata_block_no;
       temp_superblock->num_free_blocks--;
       temp_superblock->num_free_blocks--;
-      disk->write(superblock_disk_block_no,(char*)temp_superblock);
+      disk->write(superblock_disk_block_no,(unsigned char*)temp_superblock);
       Console::puts("Wrote the updated superblock information to the disk..\n");
     }
     else
     {
       Console::puts("The directory entry was found to be ");Console::putui(temp_directory_entry);Console::puts("\n");
-      disk->read(temp_directory_entry,(char*)temp_file_metadata);
+      disk->read(temp_directory_entry,(unsigned char*)temp_file_metadata);
       Console::puts("looking for a spot for empty file insertion...\n");
-      temp_file_metdata_block_no = temp_directory_entry;
+      temp_file_metadata_block_no = temp_directory_entry;
       while(temp_file_metadata->next_file_metadata_entry != 0)
       {
         Console::puts("Looking for last file created in our directory...\n");
-        temp_file_metdata_block_no = temp_file_metadata->next_file_metadata_entry;
-        disk->read(temp_file_metadata->next_file_metadata_entry,(char*)temp_file_metadata);
+        temp_file_metadata_block_no = temp_file_metadata->next_file_metadata_entry;
+        disk->read(temp_file_metadata->next_file_metadata_entry,(unsigned char*)temp_file_metadata);
       }
       Console::puts("We found the last file in our directory..\n");
       // get free blocks for block metadata and index blocks
@@ -197,19 +199,20 @@ bool FileSystem::CreateFile(int _file_id)
       new_file_index_block_no = get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
       // populate the fields of temp_file_metadata
       new_file_metadata->file_id = _file_id;
-      new_file_metadat->next_file_metadata_entry = 0;
+      new_file_metadata->next_file_metadata_entry = 0;
       new_file_metadata->index_block_no = new_file_index_block_no;
+      new_file_metadata->num_blocks_allocated = 0;
       // link the new file metadata to old file metadata
       temp_file_metadata->next_file_metadata_entry = new_file_metadata_block_no;
       // write the new metdata block to the disk
-      disk->write(new_file_metadata_block_no,(char*)new_file_metadata);
+      disk->write(new_file_metadata_block_no,(unsigned char*)new_file_metadata);
       // write the previous metadata block to disk
-      disk->write(temp_file_metadata_block_no,(char*)temp_file_metadata);
+      disk->write(temp_file_metadata_block_no,(unsigned char*)temp_file_metadata);
       Console::puts("Written the newly created file metadata to the disk\n");
       Console::puts("Written a empty index block for newly created file to the disk\n");
       temp_superblock->num_free_blocks--;
       temp_superblock->num_free_blocks--;
-      disk->write(superblock_disk_block_no,(char*)temp_superblock);
+      disk->write(superblock_disk_block_no,(unsigned char*)temp_superblock);
       Console::puts("Wrote the updated superblock information to the disk..\n");
     }
     // traverse through the created files strcture to find an empty spot
@@ -219,13 +222,13 @@ bool FileSystem::CreateFile(int _file_id)
     while(traverse_file != NULL)
     {
       previous_file = traverse_file;
-      traverse_file = traverse_file_metadata->next_created_file;
+      traverse_file = traverse_file->next_created_file;
     }
     // We have reached a NULL pointer so we can insert our new file here
     if(previous_file == NULL)
     {
       // first entry in the created files linked list
-      new_file = new File();
+      new_file = new File(new_file_metadata_block_no);
       new_created_file = new created_file;
       new_created_file->next_created_file = NULL;
       new_created_file->file_id = _file_id;
@@ -236,10 +239,10 @@ bool FileSystem::CreateFile(int _file_id)
     }
     else
     {
-      new_file = new File();
+      new_file = new File(new_file_metadata_block_no);
       new_created_file = new created_file;
       previous_file->next_created_file = new_created_file;
-      new_created_file->next_file_metadata_entry = NULL;
+      new_created_file->next_created_file= NULL;
       new_created_file->file_id = _file_id;
       new_created_file->file_ptr = new_file;
       Console::puts("File with file_id ");Console::putui(_file_id);Console::puts("attached to file with id ");Console::putui(previous_file->file_id);Console::puts(" in our file created-files linked list\n");
@@ -251,62 +254,166 @@ bool FileSystem::CreateFile(int _file_id)
 bool FileSystem::DeleteFile(int _file_id)
 {
     Console::puts("deleting file..\n");
-    // First look up for required id in our file metadata linked list
+    // First look up for required id in our file created-files linked list
     // traverse through the file meat data strcture to find an empty spot
-    file_metadata_entry* traverse_file_metadata = NULL;
-    file_metadata_entry* previous_file_metadata_entry = NULL;
-    traverse_file_metadata = file_metadata;
-    while(traverse_file_metadata != NULL)
+    created_file* traverse_file = NULL;
+    created_file* previous_file = NULL;
+    traverse_file = created_files;
+    while(traverse_file != NULL)
     {
-      if(traverse_file_metadata->file_id == _file_id)
+      if(traverse_file->file_id == _file_id)
       {
-        if(previous_file_metadata_entry == NULL)
+        if(previous_file == NULL)
         {
           // the file to be removed is the head of our metadata linked-list
-          file_metadata = file_metadata->next_file_metadata_entry;
-          Console::puts("File with file_id ");Console::putui(_file_id);Console::puts("removed from top of our metadata linked-list\n");
-          delete traverse_file_metadata;
+          created_files = created_files->next_created_file;
+          Console::puts("File with file_id ");Console::putui(_file_id);Console::puts("removed from top of our created-files linked-list\n");
+          delete traverse_file;
+          // sufficient for now, but disk cleanup needed
           return true;
         }
         else
         {
-          previous_file_metadata_entry->next_file_metadata_entry = traverse_file_metadata->next_file_metadata_entry;
-          Console::puts("File with file_id ");Console::putui(_file_id);Console::puts("removed from our metadata linked-list at ");Console::putui(previous_file_metadata_entry-.file_id);Console::puts("\n");
-          delete traverse_file_metadata;
+          previous_file->next_created_file = traverse_file->next_created_file;
+          Console::puts("File with file_id ");Console::putui(_file_id);Console::puts("removed from our created-files linked-list at ");Console::putui(previous_file->file_id);Console::puts("\n");
+          delete traverse_file;
+          // sufficient for now, but disk clean up needed
           return true;
         }
       }
       else
       {
         // else continue the search
-        previous_file_metadata_entry = traverser_file_metadata;
-        traverse_file_metadata = traverse_file_metadata->next_file_metadata_entry;
+        previous_file = traverse_file;
+        traverse_file = traverse_file->next_created_file;
       }
     }
     return false;
 }
 
-unsigned long get_free_block_no(SimpleDisk* input_disk,unsigned long disk_allocation_bitmap_block_no)
+unsigned long FileSystem::get_free_block_no(SimpleDisk* input_disk,unsigned long disk_allocation_bitmap_block_no)
 {
   // declare the intermediate variables for our program
-  char temp_disk_allocation_bitmap[512];
+  unsigned char temp_disk_allocation_bitmap[512];
   unsigned int temp_block_number = 0;
   // read the disk allocation bitmap from the disk
   input_disk->read(disk_allocation_bitmap_block_no,temp_disk_allocation_bitmap);
   // traverse till we find a free block in the disk
   while((temp_disk_allocation_bitmap[temp_block_number/8] & ((0x01)<< temp_block_number%8)))
   {
-    Console::puts("Block ");Console::putui(temp_block_number);Console::putui("is not empty\n");
+    Console::puts("Block ");Console::putui(temp_block_number);Console::puts("is not empty\n");
     if(temp_block_number == 1024)
     {
       // just to prevent it from going into an infinite loop
       break;
     }
   }
-  Console::puts("Block ");Console::putui(temp_block_number);Console::putui("is empty\n");
+  Console::puts("Block ");Console::putui(temp_block_number);Console::puts("is empty\n");
   // mark the free block as occupied
   temp_disk_allocation_bitmap[temp_block_number/8] = (temp_disk_allocation_bitmap[temp_block_number/8]|(0x01 << (temp_block_number%8)));
   // write back the updated block map information to disk
   input_disk->write(temp_block_number, temp_disk_allocation_bitmap);
   return temp_block_number;
+}
+void FileSystem::set_block_free(SimpleDisk* disk, unsigned long _block_no)
+{
+
+}
+
+bool FileSystem::request_disk_block(unsigned long _metadata_block_no)
+{
+  // get the superblock first to make the changes you made spread across the system
+  superblock temp_superblock[0];
+  disk->read(superblock_disk_block_no,(unsigned char*)temp_superblock);
+  // get the metadata of the file from the input
+  file_metadata_entry  temp_file_metadata[0];
+  disk->read(_metadata_block_no,(unsigned char*)temp_file_metadata);
+  // now get the free block from bitmap we acquired
+  unsigned long new_block_request = FileSystem::get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
+  if(new_block_request == 0)
+  {
+    Console::puts("Got no new blocks from the get_free_block procedure, Something must be wrong\n");
+    return 0;
+  }
+  // update the free blocks field in superblock of the file system
+  temp_superblock->num_free_blocks--;
+  // update the num_blocks allocated in file metadata field
+  temp_file_metadata->num_blocks_allocated++;
+  unsigned char temp_file_index_block[512];
+  unsigned long* temp_file_index_block_unsigned_long_ptr = (unsigned long*) temp_file_index_block;
+  disk->read(temp_file_metadata->index_block_no,temp_file_index_block);
+  unsigned int i;
+  for(i=0;i<temp_file_metadata->num_blocks_allocated;i++)
+  {
+    if(i < (temp_file_metadata->num_blocks_allocated-1))
+    {
+      temp_file_index_block_unsigned_long_ptr[i] = temp_file_index_block_unsigned_long_ptr[i];
+    }
+    else if(i == temp_file_metadata->num_blocks_allocated-1)
+    {
+      temp_file_index_block_unsigned_long_ptr[i] = new_block_request;
+    }
+  }
+  // write back index block, superblock and metadata
+  disk->write(superblock_disk_block_no,(unsigned char*)temp_superblock);
+  disk->write(_metadata_block_no,(unsigned char*)temp_file_metadata);
+  disk->write(temp_file_metadata->index_block_no,temp_file_index_block);
+  return true;
+}
+
+bool FileSystem::data_block_read(unsigned char* _read_buffer,unsigned long _metadata_block_no)
+{
+  // get the metadata block using the input
+  file_metadata_entry temp_file_metadata[0];
+  disk->read(_metadata_block_no,(unsigned char*)temp_file_metadata);
+  // get the index block content using the obtained metadata block
+  unsigned char temp_file_index_block[512];
+  unsigned long* temp_file_index_block_unsigned_long_ptr = (unsigned long*)temp_file_index_block;
+  disk->read(temp_file_metadata->index_block_no,temp_file_index_block);
+  if(temp_file_metadata->num_blocks_allocated == 1)
+  {
+    // read from that block
+    disk->read(temp_file_index_block_unsigned_long_ptr[0],_read_buffer);
+    Console::puts("Read from the block number in the index node\n");
+  }
+}
+
+bool FileSystem::data_block_write(unsigned char* _write_buffer, unsigned long _metadata_block_no)
+{
+  file_metadata_entry temp_file_metadata[0];
+  disk->read(_metadata_block_no,(unsigned char*)temp_file_metadata);
+  // get the index block content using the obtained metadata block
+  unsigned char temp_file_index_block[512];
+  unsigned long* temp_file_index_block_unsigned_long_ptr = (unsigned long*)temp_file_index_block;
+  disk->read(temp_file_metadata->index_block_no,temp_file_index_block);
+  if(temp_file_metadata->num_blocks_allocated == 1)
+  {
+    // read from that block
+    disk->write(temp_file_index_block_unsigned_long_ptr[0],_write_buffer);
+    Console::puts("Write to the block number in the index node\n");
+  }
+  return true;
+}
+
+bool FileSystem::erase_data_block(unsigned long _metadata_block_no)
+{
+  file_metadata_entry temp_file_metadata[0];
+  disk->read(_metadata_block_no,(unsigned char*)temp_file_metadata);
+  // get the index block content using the obtained metadata block
+  unsigned char temp_file_index_block[512];
+  unsigned char null_array[512];
+  unsigned int i;
+  unsigned long* temp_file_index_block_unsigned_long_ptr = (unsigned long*)temp_file_index_block;
+  disk->read(temp_file_metadata->index_block_no,temp_file_index_block);
+  // populate the null array
+  for(i=0;i<512;i++)
+  {
+    null_array[i] = '\0';
+  }
+  if(temp_file_metadata->num_blocks_allocated == 1)
+  {
+    disk->write(temp_file_index_block_unsigned_long_ptr[0],null_array);
+    Console::puts("Written null array to the block number in the index\n");
+  }
+  return true;
 }
