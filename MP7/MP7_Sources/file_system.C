@@ -29,7 +29,9 @@
 
 FileSystem::FileSystem()
 {
-  file_metadata = NULL;
+  // initialize the varible fields to default values
+  created_files = NULL;
+  superblock_disk_block_no = 0;
   Console::puts("Constructed the File System succesfully, but it is empty now..\n");
 }
 
@@ -123,20 +125,20 @@ File * FileSystem::LookupFile(int _file_id)
 {
   Console::puts("looking up file..\n");
   // traverse through our data structure with a file pointer
-  file_metadata_entry* traverse_file_metadata = NULL;
-  traverse_file_metadata = file_metadata;
-  while(traverse_file_metadata != NULL)
+  created_file* traverse_file = NULL;
+  traverse_file = created_files;
+  while(traverse_file!= NULL)
   {
     // if file pointer with the required file_id is found return it
-    if(traverse_file_metadata->file_id == _file_id)
+    if(traverse_file->file_id == _file_id)
     {
       Console::puts("File Lookup succesful for file_id ");Console::putui(_file_id);Console::puts("\n");
-      return traverse_file_metadata->file_ptr;
+      return traverse_file->file_ptr;
     }
     // if it is not found continue your search until you reach the end
     else
     {
-      traverse_file_metadata = traverse_file_metadata->next_file_metadata_entry;
+      traverse_file = traverse_file->next_created_file;
     }
   }
   // file is not found in our list of files stored by our file system, so return NULL
@@ -148,10 +150,12 @@ bool FileSystem::CreateFile(int _file_id)
     Console::puts("creating file..\n");
     // get the superblock from the file system
     superblock temp_superblock[0];
-    unsigned long temp_file_metadata_block_no;
-    unsigned long temp_file_index_block_no;
+    unsigned long new_file_metadata_block_no;
+    unsigned long temp_file_metdata_block_no;
+    unsigned long new_file_index_block_no;
     unsigned long temp_directory_entry;
-    file_metadata temp_file_metadata[0];
+    File* new_file;
+    created_file* new_created_file;
     disk->read(superblock_disk_block_no,(char*)temp_superblock);
     Console::puts("Read Superblock from the file system..It has ");Console::putui(temp_superblock->num_free_blocks);Console::puts(" free blocks in it's file system");
     // Get the directory entry to create a new entry for file meta-data
@@ -160,70 +164,87 @@ bool FileSystem::CreateFile(int _file_id)
     {
       Console::puts("The directory entry is zero, This file creation would populate it\n");
       // get  a free block from the disk to write the newly created file data
-      temp_file_metadata_block_no = FileSystem::get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
-      temp_file_index_block_no = FileSystem::get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
+      new_file_metadata_block_no = FileSystem::get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
+      new_file_index_block_no = FileSystem::get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
       // populate the entries of temporary file metadata entry
-      temp_file_metadata->file_id = _file_id;
-      temp_file_metatdata->next_file_metadata_entry = 0;
-      temp_file_metadata->index_block_no = temp_file_index_block_no;
+      new_file_metadata->file_id = _file_id;
+      new_file_metatdata->next_file_metadata_entry = 0;
+      new_file_metadata->index_block_no = new_file_index_block_no;
       // Write the meta data block to the disk
-      disk->write(temp_file_metadata_block_no,(char*)temp_file_metadata);
-      return true;
+      disk->write(new_file_metadata_block_no,(char*)new_file_metadata);
+      // update the directory entry and number of free blocks information in the super block
+      temp_superblock->directory_entry = new_file_metadata_block_no;
+      temp_superblock->num_free_blocks--;
+      temp_superblock->num_free_blocks--;
+      disk->write(superblock_disk_block_no,(char*)temp_superblock);
+      Console::puts("Wrote the updated superblock information to the disk..\n");
     }
     else
     {
-      // files are created previously in this directory
-      temp_directory_entry = temp_superblock->directory_entry;
-      Console::puts("The directory entry was found to be ");Console::putui();Console::puts("\n");
+      Console::puts("The directory entry was found to be ");Console::putui(temp_directory_entry);Console::puts("\n");
       disk->read(temp_directory_entry,(char*)temp_file_metadata);
-      Console::puts("looking for a spot for empty file insertion...\n")
+      Console::puts("looking for a spot for empty file insertion...\n");
+      temp_file_metdata_block_no = temp_directory_entry;
       while(temp_file_metadata->next_file_metadata_entry != 0)
       {
         Console::puts("Looking for last file created in our directory...\n");
+        temp_file_metdata_block_no = temp_file_metadata->next_file_metadata_entry;
         disk->read(temp_file_metadata->next_file_metadata_entry,(char*)temp_file_metadata);
       }
       Console::puts("We found the last file in our directory..\n");
       // get free blocks for block metadata and index blocks
-      temp_file_metadata_block_no = get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
-      temp_file_index_block_no = get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
+      new_file_metadata_block_no = get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
+      new_file_index_block_no = get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
       // populate the fields of temp_file_metadata
-      temp_file_metadata->file_id = _file_id;
-      temp_file_metadat->next_file_metadata_entry = 0;
-      temp_file_metadata->index_block_no = temp_file_index_block_no;
-      // write the metdata block to the disk
+      new_file_metadata->file_id = _file_id;
+      new_file_metadat->next_file_metadata_entry = 0;
+      new_file_metadata->index_block_no = new_file_index_block_no;
+      // link the new file metadata to old file metadata
+      temp_file_metadata->next_file_metadata_entry = new_file_metadata_block_no;
+      // write the new metdata block to the disk
+      disk->write(new_file_metadata_block_no,(char*)new_file_metadata);
+      // write the previous metadata block to disk
       disk->write(temp_file_metadata_block_no,(char*)temp_file_metadata);
-      return true;
+      Console::puts("Written the newly created file metadata to the disk\n");
+      Console::puts("Written a empty index block for newly created file to the disk\n");
+      temp_superblock->num_free_blocks--;
+      temp_superblock->num_free_blocks--;
+      disk->write(superblock_disk_block_no,(char*)temp_superblock);
+      Console::puts("Wrote the updated superblock information to the disk..\n");
     }
-    // traverse through the file meat data strcture to find an empty spot
-    /*file_metadata_entry* traverse_file_metadata = NULL;
-    file_metadata_entry* previous_file_metadata_entry = NULL;
-    traverse_file_metadata = file_metadata;
-    while(traverse_file_metadata != NULL)
+    // traverse through the created files strcture to find an empty spot
+    created_file* traverse_file = NULL;
+    created_file* previous_file = NULL;
+    traverse_file = created_files;
+    while(traverse_file != NULL)
     {
-      previous_file_metadata_entry = traverser_file_metadata;
-      traverse_file_metadata = traverse_file_metadata->next_file_metadata_entry;
+      previous_file = traverse_file;
+      traverse_file = traverse_file_metadata->next_created_file;
     }
-    // We have reached a NULL pointer so we can insert our new entry here
-    if(previous_file_metadata_entry == NULL)
+    // We have reached a NULL pointer so we can insert our new file here
+    if(previous_file == NULL)
     {
-      // first entry in the meta data linked list
-      file_metadata = new file_metadata_entry;
-      file_metadata->next_file_metadata_entry = NULL;
-      file_metadata->file_id = _file_id;
-      file_metadata->file_ptr = new file;
-      Console::puts("File with file_id ");Console::putui(_file_id);Console::puts("created as first element of our metadata linked-list\n");
+      // first entry in the created files linked list
+      new_file = new File();
+      new_created_file = new created_file;
+      new_created_file->next_created_file = NULL;
+      new_created_file->file_id = _file_id;
+      new_created_file->file_ptr = new_file;
+      created_files = new_created_file;
+      Console::puts("File with file_id ");Console::putui(_file_id);Console::puts("created as first element of our created-files linked-list\n");
       return true;
     }
     else
     {
-      traverse_file_metadata = new file_metadata_entry;
-      previous_file_metadata_entry->next_file_metadata_entry = traverse_file_metadata;
-      traverse_file_metadata->next_file_metadata_entry = NULL;
-      traverse_file_metadata->file_id = _file_id;
-      traverse_file_metadata->file_ptr = new file;
-      Console::puts("File with file_id ");Console::putui(_file_id);Console::puts("attached to file with id ");Console::putui(previous_file_metadata_entry->file_id);Console::puts(" in our file metadata linked list\n");
+      new_file = new File();
+      new_created_file = new created_file;
+      previous_file->next_created_file = new_created_file;
+      new_created_file->next_file_metadata_entry = NULL;
+      new_created_file->file_id = _file_id;
+      new_created_file->file_ptr = new_file;
+      Console::puts("File with file_id ");Console::putui(_file_id);Console::puts("attached to file with id ");Console::putui(previous_file->file_id);Console::puts(" in our file created-files linked list\n");
       return true;
-    }*/
+    }
     return false;
 }
 

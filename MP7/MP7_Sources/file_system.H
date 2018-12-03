@@ -45,6 +45,12 @@ typedef struct superblock
   unsigned long disk_block_allocation_bitmap; // points to disk allocation bitmap
 } superblock;
 
+typedef struct created_file
+{
+  int file_id; // file id of created file
+  File* file_ptr; // file pointer of created file
+  struct created_file* next_created_file; // pointer to next created file, which will be this struct again
+}created_file;
 /*--------------------------------------------------------------------------*/
 /* FORWARD DECLARATIONS */
 /*--------------------------------------------------------------------------*/
@@ -65,9 +71,9 @@ private:
      SimpleDisk * disk;
      unsigned int size;
      // file system should know the location of superblock of the file system
-     unsigned long superblock_disk_block_no;
-     // List contaning all the  meta data mappings of all files placed on stack
-     file_metadata_entry* file_metadata;
+     unsigned long superblock_disk_block_no; // give the default value as zero
+     // List contaning all the created file ids's and file pointers for those created files
+     created_file* created_files; // allocate NULL in constructor
 
      unsigned long get_free_block_no(SimpleDisk* input_disk,unsigned long disk_allocation_bitmap_block_no);
      void set_block_free(SimpleDisk* disk, unsigned long _block_no);
