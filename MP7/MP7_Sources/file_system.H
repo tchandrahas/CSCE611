@@ -71,10 +71,10 @@ private:
 
      SimpleDisk * disk;
      unsigned int size;
-     // file system should know the location of superblock of the file system
      unsigned long superblock_disk_block_no; // give the default value as zero
      // List contaning all the created file ids's and file pointers for those created files
-     created_file* created_files; // allocate NULL in constructor
+     created_file* created_files; // allocate NULL in constructors
+     // file system should know the location of superblock of the file system
 
      unsigned long get_free_block_no(SimpleDisk* input_disk,unsigned long disk_allocation_bitmap_block_no);
      void set_block_free(SimpleDisk* disk, unsigned long _block_no);
