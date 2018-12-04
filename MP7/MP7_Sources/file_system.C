@@ -153,11 +153,19 @@ bool FileSystem::CreateFile(int _file_id)
     unsigned long new_file_metadata_block_no;
     unsigned long temp_file_metadata_block_no;
     unsigned long new_file_index_block_no;
+    unsigned long new_file_data_location;
     unsigned long temp_directory_entry;
     file_metadata_entry* new_file_metadata = new file_metadata_entry;
     file_metadata_entry* temp_file_metadata = new file_metadata_entry;
     File* new_file;
     created_file* new_created_file;
+    unsigned long* index_block_unsigned_long_ptr;
+    unsigned char* index_block = new unsigned char[512];
+    for(unsigned int y=0;y<512;y++)
+    {
+      index_block[y] = 0;
+    }
+    index_block_unsigned_long_ptr = (unsigned long*) index_block;
     disk->read((unsigned long)superblock_disk_block_no,(unsigned char*)temp_superblock);
     Console::puts("Superblock of this file system is expected to be at ");Console::putui(superblock_disk_block_no);Console::puts("\n");
     Console::puts("Superblock of this file system is expected to be at ");Console::putui(superblock_disk_block_no);Console::puts("\n");
@@ -171,16 +179,23 @@ bool FileSystem::CreateFile(int _file_id)
       // get  a free block from the disk to write the newly created file data
       new_file_metadata_block_no = FileSystem::get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
       new_file_index_block_no = FileSystem::get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
+      new_file_data_location = FileSystem::get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
+      index_block_unsigned_long_ptr[0] = new_file_data_location;
       Console::puts("The metadata block number of new file is");Console::putui(new_file_metadata_block_no);Console::puts("\n");
       Console::puts("The index block number of new file is");Console::putui(new_file_index_block_no);Console::puts("\n");
+      Console::puts("The data block number of new file is");Console::putui(new_file_data_location);Console::puts("\n");
       // populate the entries of temporary file metadata entry
-      new_file_metadata->file_id = _file_id;
+      new_file_metadata->file_id = *input_file_id;
       new_file_metadata->next_file_metadata_entry = 0;
       new_file_metadata->index_block_no = new_file_index_block_no;
+      new_file_metadata->num_blocks_allocated = 1;
+      // write off the initial data location in index block
+      disk->write(new_file_index_block_no,index_block);
       // Write the meta data block to the disk
       disk->write(new_file_metadata_block_no,(unsigned char*)new_file_metadata);
       // update the directory entry and number of free blocks information in the super block
       temp_superblock->directory_entry = new_file_metadata_block_no;
+      temp_superblock->num_free_blocks--;
       temp_superblock->num_free_blocks--;
       temp_superblock->num_free_blocks--;
       Console::puts("Superblock of this file system is expected to be at ");Console::putui(superblock_disk_block_no);Console::puts("\n");
@@ -203,21 +218,28 @@ bool FileSystem::CreateFile(int _file_id)
       // get free blocks for block metadata and index blocks
       new_file_metadata_block_no = get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
       new_file_index_block_no = get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
+      new_file_data_location = get_free_block_no(disk,temp_superblock->disk_block_allocation_bitmap);
+      index_block_unsigned_long_ptr[0] = new_file_data_location;
       Console::puts("The metadata block number of new file is");Console::putui(new_file_metadata_block_no);Console::puts("\n");
       Console::puts("The index block number of new file is");Console::putui(new_file_index_block_no);Console::puts("\n");
+      Console::puts("The data block number of new file is");Console::putui(new_file_data_location);Console::puts("\n");
+
       // populate the fields of temp_file_metadata
-      new_file_metadata->file_id = _file_id;
+      new_file_metadata->file_id = *input_file_id;
       new_file_metadata->next_file_metadata_entry = 0;
       new_file_metadata->index_block_no = new_file_index_block_no;
-      new_file_metadata->num_blocks_allocated = 0;
+      new_file_metadata->num_blocks_allocated = 1;
       // link the new file metadata to old file metadata
       temp_file_metadata->next_file_metadata_entry = new_file_metadata_block_no;
+      // write off the initial data location in index block
+      disk->write(new_file_index_block_no,index_block);
       // write the new metdata block to the disk
       disk->write(new_file_metadata_block_no,(unsigned char*)new_file_metadata);
       // write the previous metadata block to disk
       disk->write(temp_file_metadata_block_no,(unsigned char*)temp_file_metadata);
       Console::puts("Written the newly created file metadata to the disk\n");
       Console::puts("Written a empty index block for newly created file to the disk\n");
+      temp_superblock->num_free_blocks--;
       temp_superblock->num_free_blocks--;
       temp_superblock->num_free_blocks--;
       Console::puts("Superblock of this file system is expected to be at ");Console::putui(superblock_disk_block_no);Console::puts("\n");
@@ -239,7 +261,7 @@ bool FileSystem::CreateFile(int _file_id)
     if(previous_file == NULL)
     {
       // first entry in the created files linked list
-      Console::puts("Creating a new file..\n");
+      Console::puts("Creating a new file object..\n");
       new_file = new File(new_file_metadata_block_no);
       new_created_file = new created_file;
       new_created_file->next_created_file = NULL;
@@ -247,11 +269,17 @@ bool FileSystem::CreateFile(int _file_id)
       new_created_file->file_ptr = new_file;
       created_files = new_created_file;
       Console::puts("File with file_id ");Console::putui(new_created_file->file_id);Console::puts("created as first element of our created-files linked-list\n");
+      // delete the data pointed by all the data structures
       delete temp_superblock;
+      delete new_file_metadata;
+      delete temp_file_metadata;
+      delete input_file_id;
       return true;
     }
     else
     {
+      Console::puts("Creating a new file object..");
+      Console::puts("The metadata block number is ");Console::putui(new_file_metadata_block_no);
       new_file = new File(new_file_metadata_block_no);
       new_created_file = new created_file;
       previous_file->next_created_file = new_created_file;
@@ -260,7 +288,11 @@ bool FileSystem::CreateFile(int _file_id)
       Console::puts("New file creation is for file with file_id ");Console::putui(_file_id);Console::puts("\n");
       new_created_file->file_ptr = new_file;
       Console::puts("File with file_id ");Console::putui(new_created_file->file_id);Console::puts("attached to file with id ");Console::putui(previous_file->file_id);Console::puts(" in our file created-files linked list\n");
+      // delete the data pointed by all the data structuress
       delete temp_superblock;
+      delete new_file_metadata;
+      delete temp_file_metadata;
+      delete input_file_id;
       return true;
     }
     return false;
@@ -327,6 +359,7 @@ unsigned long FileSystem::get_free_block_no(SimpleDisk* input_disk,unsigned long
   input_disk->write(disk_allocation_bitmap_block_no, temp_disk_allocation_bitmap);
   return temp_block_number;
 }
+
 void FileSystem::set_block_free(SimpleDisk* disk, unsigned long _block_no)
 {
 
@@ -378,46 +411,67 @@ bool FileSystem::request_disk_block(unsigned long _metadata_block_no)
 bool FileSystem::data_block_read(unsigned char* _read_buffer,unsigned long _metadata_block_no)
 {
   // get the metadata block using the input
-  file_metadata_entry temp_file_metadata[0];
-  disk->read(_metadata_block_no,(unsigned char*)temp_file_metadata);
-  // get the index block content using the obtained metadata block
-  unsigned char temp_file_index_block[512];
+  file_metadata_entry* temp_file_metadata = new file_metadata_entry;
+  unsigned long* metadata_block_no = new unsigned long;
+  *metadata_block_no = _metadata_block_no;
+  unsigned char* temp_file_index_block = new unsigned char[512];
+  disk->read(*metadata_block_no,(unsigned char*)temp_file_metadata);
   unsigned long* temp_file_index_block_unsigned_long_ptr = (unsigned long*)temp_file_index_block;
+  Console::puts("the index block number for the file is found out to be ");Console::putui(temp_file_metadata->index_block_no);Console::puts("\n");
   disk->read(temp_file_metadata->index_block_no,temp_file_index_block);
   if(temp_file_metadata->num_blocks_allocated == 1)
   {
     // read from that block
+    Console::puts("The data block for this file was found out to be ");Console::putui(temp_file_index_block_unsigned_long_ptr[0]);Console::puts("\n");
+    Console::puts("Reading from the data block...");
     disk->read(temp_file_index_block_unsigned_long_ptr[0],_read_buffer);
-    Console::puts("Read from the block number in the index node\n");
+    Console::puts("..done\n");
   }
+  delete temp_file_metadata;
+  delete metadata_block_no;
+  delete temp_file_index_block;
+  return true;
 }
 
 bool FileSystem::data_block_write(unsigned char* _write_buffer, unsigned long _metadata_block_no)
 {
-  file_metadata_entry temp_file_metadata[0];
-  disk->read(_metadata_block_no,(unsigned char*)temp_file_metadata);
+  file_metadata_entry* temp_file_metadata = new file_metadata_entry;
+  unsigned long* metadata_block_no = new unsigned long;
+  *metadata_block_no = _metadata_block_no;
+  unsigned char* temp_file_index_block = new unsigned char[512];
+  disk->read(*metadata_block_no,(unsigned char*)temp_file_metadata);
   // get the index block content using the obtained metadata block
-  unsigned char temp_file_index_block[512];
+
   unsigned long* temp_file_index_block_unsigned_long_ptr = (unsigned long*)temp_file_index_block;
+  Console::puts("the index block number for the file is found out to be ");Console::putui(temp_file_metadata->index_block_no);Console::puts("\n");
   disk->read(temp_file_metadata->index_block_no,temp_file_index_block);
   if(temp_file_metadata->num_blocks_allocated == 1)
   {
     // read from that block
+    Console::puts("The data block for this file was found out to be ");Console::putui(temp_file_index_block_unsigned_long_ptr[0]);Console::puts("\n");
+    Console::puts("Writing into the data block...");
     disk->write(temp_file_index_block_unsigned_long_ptr[0],_write_buffer);
-    Console::puts("Write to the block number in the index node\n");
+    Console::puts("..done\n");
   }
+  delete metadata_block_no;
+  delete temp_file_index_block;
+  delete temp_file_metadata;
   return true;
 }
 
 bool FileSystem::erase_data_block(unsigned long _metadata_block_no)
 {
-  file_metadata_entry temp_file_metadata[0];
-  disk->read(_metadata_block_no,(unsigned char*)temp_file_metadata);
+  file_metadata_entry* temp_file_metadata = new file_metadata_entry;
+  unsigned long* metadata_block_no = new unsigned long;
+  *(metadata_block_no) = _metadata_block_no;
+  Console::puts("Metadata block number of requested file is ");Console::putui(*metadata_block_no);Console::puts("\n");
+  disk->read(*metadata_block_no,(unsigned char*)temp_file_metadata);
   // get the index block content using the obtained metadata block
-  unsigned char temp_file_index_block[512];
-  unsigned char null_array[512];
+  unsigned char* temp_file_index_block = new unsigned char[512];
+  unsigned char* null_array = new unsigned char[512];
   unsigned int i;
   unsigned long* temp_file_index_block_unsigned_long_ptr = (unsigned long*)temp_file_index_block;
+  Console::puts("Reading index block no. ");Console::putui(temp_file_metadata->index_block_no);Console::puts("...\n");
   disk->read(temp_file_metadata->index_block_no,temp_file_index_block);
   // populate the null array
   for(i=0;i<512;i++)
@@ -429,5 +483,24 @@ bool FileSystem::erase_data_block(unsigned long _metadata_block_no)
     disk->write(temp_file_index_block_unsigned_long_ptr[0],null_array);
     Console::puts("Written null array to the block number in the index\n");
   }
+  delete null_array;
+  delete temp_file_index_block;
+  delete metadata_block_no;
+  delete temp_file_metadata;
   return true;
+}
+
+unsigned long FileSystem::get_allocated_size(unsigned long _metadata_block_no)
+{
+  unsigned long* metadata_block_no = new unsigned long;
+  *metadata_block_no = _metadata_block_no;
+  file_metadata_entry* file_metadata_block = new file_metadata_entry;
+  Console::puts("Making disk read to get metadata block at block no ");Console::putui(*metadata_block_no);
+  disk->read(*metadata_block_no,(unsigned char*)file_metadata_block);
+  Console::puts("..done\n");
+  Console::puts("Allocated size in blocks to ");Console::putui(file_metadata_block->num_blocks_allocated);Console::puts("\n");
+  unsigned int allocated_size_buffer = file_metadata_block->num_blocks_allocated;
+  delete metadata_block_no;
+  delete file_metadata_block;
+  return allocated_size_buffer;
 }

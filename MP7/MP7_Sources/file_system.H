@@ -109,5 +109,6 @@ public:
     bool data_block_write(unsigned char* _write_buffer, unsigned long metadata_block_no);
 
     bool erase_data_block(unsigned long _metadata_block_no);
+    unsigned long  get_allocated_size(unsigned long _metadata_block_no);
 };
 #endif

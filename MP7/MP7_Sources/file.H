@@ -41,6 +41,7 @@ private:
     unsigned long file_metadata_block_no;
     unsigned long allocated_size;
     unsigned long filled_size;
+    unsigned long* file_metadata_block_no_buffer;
     /* -- maybe it would be good to have a reference to the file system? */
 
 public:
