@@ -33,16 +33,20 @@ File::File(unsigned long _metadata_block_no)
      block with file management and allocation data. */
     Console::puts("In file constructor.\n");
     // set the current position to zero
-    current_position = 0;
+    current_position = new unsigned int;
+    *current_position = 0;
     // buffer the file_id and index block number which are inputs to the constructor
-    //file_metadata_block_no = _metadata_block_no;
+    file_metadata_block_no = new unsigned long;
+    *file_metadata_block_no = _metadata_block_no;
     file_metadata_block_no_buffer = new unsigned long;
     *file_metadata_block_no_buffer = _metadata_block_no;
     Console::puts("Initialized the file_meta_data_block_no");Console::putui(*file_metadata_block_no_buffer);
     // initialize the allocated size to zero
-    allocated_size  = 0;
+    allocated_size  = new unsigned long;
+    *allocated_size = 0;
     // initialize the filled size to zero
-    filled_size = 0;
+    filled_size = new unsigned long;
+    *filled_size = 0;
 }
 
 /*--------------------------------------------------------------------------*/
@@ -60,11 +64,12 @@ int File::Read(unsigned int _n, char * _buf)
     unsigned int print_value;
     // read the requested number of characters from file
     Console::puts("Getting allocated blocks...");
+    Console::puts("Value of file_metadata_block is ");Console::putui(*file_metadata_block_no_buffer);Console::puts("\n");
     Console::putui(*file_metadata_block_no_buffer);Console::puts("\n");
 
-    allocated_size = FILE_SYSTEM->get_allocated_size(*file_metadata_block_no_buffer);Console::puts("..done\n");
-    Console::puts("Allocated size in number of blocks is ");Console::putui(allocated_size);
-    if(allocated_size == 1)
+    *allocated_size = FILE_SYSTEM->get_allocated_size(*file_metadata_block_no_buffer);Console::puts("..done\n");
+    Console::puts("Allocated size in number of blocks is ");Console::putui(*allocated_size);
+    if(*allocated_size == 1)
     {
       Console::puts("Only one size allocated to the file..we will get that\n");
       assert(FILE_SYSTEM->data_block_read(output_buffer,*file_metadata_block_no_buffer));
@@ -96,9 +101,9 @@ void File::Write(unsigned int _n, const char * _buf)
     input_buffer = (char*)_buf;
     bool block_request_result;
     unsigned char* write_buffer = new unsigned char[512];
-    allocated_size = FILE_SYSTEM->get_allocated_size(*file_metadata_block_no_buffer);
-    Console::puts("Allocated size in number of blocks is ");Console::putui(allocated_size);
-    if((allocated_size == 0)|((allocated_size*512) < (filled_size)+ _n))
+    *allocated_size = FILE_SYSTEM->get_allocated_size(*file_metadata_block_no_buffer);
+    Console::puts("Allocated size in number of blocks is ");Console::putui(*allocated_size);
+    if((*allocated_size == 0)|((*allocated_size*512) < (*filled_size)+ _n))
     {
       Console::puts("Allocated Size not sufficient\n");
       block_request_result = FILE_SYSTEM->request_disk_block(*file_metadata_block_no_buffer);
@@ -111,7 +116,7 @@ void File::Write(unsigned int _n, const char * _buf)
     }
     else
     {
-      allocated_size_bytes = allocated_size*512;
+      allocated_size_bytes = *allocated_size*512;
       Console::puts("Allocated size to the file is ");Console::putui(allocated_size_bytes);
     }
     // make the write buffer ready
@@ -133,7 +138,7 @@ void File::Write(unsigned int _n, const char * _buf)
 void File::Reset()
 {
     Console::puts("reset current position in file...");
-    current_position = 0;
+    *current_position = 0;
     Console::puts("done\n");
 }
 
